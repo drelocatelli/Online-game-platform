@@ -4,16 +4,15 @@ const levels = {
     backgroundLevel: '/sprites/backgrounds/background1.png',
     floorBackground: '/sprites/scenary/floor1.png',
     backgroundItems: [
-      { type: 'tree', x: 120, y: 428, w: 110, h: 150, background: '/sprites/scenary/tree.png' },
-      { type: 'tree', x: 620, y: 360, w: 110, h: 140, background: '/sprites/scenary/tree.png' },
-      { type: 'tree', x: 1460, y: 390, w: 110, h: 150, background: '/sprites/scenary/tree.png' },
-      { type: 'tree', x: 2060, y: 300, w: 100, h: 140, background: '/sprites/scenary/tree.png' },
+      { type: 'tree', x: 80, y: 436, w: 110, h: 150, background: '/sprites/scenary/tree.png' },
+      { type: 'tree', x: 500, y: 373, w: 110, h: 140, background: '/sprites/scenary/tree.png' },
+      { type: 'tree', x: 1460, y: 353, w: 110, h: 150, background: '/sprites/scenary/tree.png' },
     ],
     enemies: [
       {
         id: 'enemy-1',
         x: 250,
-        y: 470,
+        y: 476,
         width: 28,
         height: 28,
         background: '/sprites/enemy.svg',
@@ -26,7 +25,7 @@ const levels = {
       {
         id: 'enemy-2',
         x: 760,
-        y: 405,
+        y: 415,
         width: 28,
         height: 28,
         background: '/sprites/enemy.svg',
@@ -39,7 +38,7 @@ const levels = {
       {
         id: 'enemy-3',
         x: 1440,
-        y: 445,
+        y: 455,
         width: 28,
         height: 28,
         background: '/sprites/enemy.svg',

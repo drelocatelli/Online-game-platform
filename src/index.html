@@ -376,6 +376,13 @@
         // Posição no mundo do jogo (considerando o scroll da câmera)
         const worldMouseX = Math.round(mouse.x + cameraX);
         ctx.fillText(`Mouse Mundo: X: ${worldMouseX}, Y: ${mouse.y}`, 10, 40);
+
+        // Posição do Jogador no Mundo
+        if (myPlayer) {
+          const playerX = Math.round(myPlayer.x);
+          const playerY = Math.round(myPlayer.y);
+          ctx.fillText(`Player Mundo: X: ${playerX}, Y: ${playerY}`, 10, 60);
+        }
       }
     </script>
   </body>
