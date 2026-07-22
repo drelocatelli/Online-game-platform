@@ -12,11 +12,29 @@
         justify-content: center;
         align-items: center;
         min-height: 100vh;
-        background-color: #1a1a2e;
+        background:
+          radial-gradient(circle at top, rgba(125, 211, 252, 0.85), transparent 30%),
+          linear-gradient(180deg, #16213e 0%, #0f3460 55%, #09111f 100%);
+        background-attachment: fixed;
+        background-size: cover;
         color: #fff;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         flex-direction: column;
+        overflow-x: hidden;
       }
+
+      body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background:
+          radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent 18%),
+          radial-gradient(circle at 80% 10%, rgba(255, 255, 255, 0.12), transparent 15%),
+          linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 50%);
+        z-index: -1;
+      }
+
       h1 {
         margin-bottom: 10px;
         color: #e94560;
@@ -25,7 +43,7 @@
         text-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
       }
       canvas {
-        background: linear-gradient(180deg, #16213e 0%, #0f3460 100%);
+        background: transparent;
         border: 4px solid #0f3460;
         box-shadow: 0 0 30px rgba(15, 52, 96, 0.6);
         border-radius: 12px;
@@ -54,17 +72,38 @@
       const canvas = document.getElementById('gameCanvas');
       const ctx = canvas.getContext('2d');
 
+      const spriteImages = {
+        idle: new Image(),
+        walk: new Image(),
+        jump: new Image(),
+        enemy: new Image(),
+        tree: new Image(),
+      };
+
+      const backgroundCache = {};
+
+      spriteImages.idle.src = '/sprites/idle.svg';
+      spriteImages.walk.src = '/sprites/walk.svg';
+      spriteImages.jump.src = '/sprites/jump.svg';
+      spriteImages.enemy.src = '/sprites/enemy.svg';
+      spriteImages.tree.src = '/sprites/scenary/tree.png';
+
       let myId = null;
       let players = {};
+      let enemies = [];
+      let backgroundItems = [];
       let platforms = [];
       let worldWidth = 800;
       let cameraX = 0;
+      let currentLevel = 1;
+      let backgroundLevel = '/sprites/backgrounds/background1.png';
 
       // Posição do mouse
       const mouse = { x: 0, y: 0 };
 
       const CANVAS_WIDTH = 800;
       const CANVAS_HEIGHT = 600;
+      const PLAYER_RENDER_SCALE = 1.50;
 
       // --- GERENCIAMENTO DE INPUTS (TECLADO) ---
       const keys = {
@@ -96,6 +135,10 @@
             keys.up = true;
             changed = true;
           }
+        }
+        if (e.key === 'l' || e.key === 'L') {
+          currentLevel = currentLevel === 1 ? 2 : 1;
+          socket.emit('changeLevel', currentLevel);
         }
 
         if (changed) sendInputs();
@@ -133,37 +176,145 @@
         myId = data.id;
         platforms = data.platforms;
         worldWidth = data.worldWidth;
+        currentLevel = data.level || currentLevel;
+        backgroundItems = data.backgroundItems || [];
+        enemies = data.enemies || [];
+        backgroundLevel = data.backgroundLevel || backgroundLevel;
       });
 
-      socket.on('state', (serverPlayers) => {
-        players = serverPlayers;
+      socket.on('state', (serverState) => {
+        players = serverState.players || serverState;
+        enemies = serverState.enemies || [];
         render();
       });
 
       socket.on('levelChanged', (data) => {
         platforms = data.platforms;
         worldWidth = data.worldWidth;
+        currentLevel = data.level || currentLevel;
+        backgroundItems = data.backgroundItems || [];
+        enemies = data.enemies || [];
+        backgroundLevel = data.backgroundLevel || backgroundLevel;
+        render();
       });
+
+      function getPlayerSprite(player) {
+        if (!player.grounded && player.vy < 0) {
+          return spriteImages.jump;
+        }
+
+        if (Math.abs(player.vx) > 0.5) {
+          return spriteImages.walk;
+        }
+
+        return spriteImages.idle;
+      }
+
+      function drawPlayerSprite(player) {
+        const sprite = getPlayerSprite(player);
+        if (!sprite || !sprite.complete) {
+          ctx.fillStyle = player.color;
+          ctx.fillRect(player.x, player.y, player.width, player.height);
+          return;
+        }
+
+        const facing = player.facing || (player.vx < 0 ? 'left' : 'right');
+        const drawWidth = player.width * PLAYER_RENDER_SCALE;
+        const drawHeight = player.height * PLAYER_RENDER_SCALE;
+        const outfitHue = player.outfitHue || 0;
+
+        ctx.save();
+        ctx.filter = `hue-rotate(${outfitHue}deg) saturate(1.15) brightness(1.03)`;
+        ctx.translate(player.x + player.width / 2, player.y - (drawHeight - player.height) / 2);
+
+        if (facing === 'left') {
+          ctx.scale(-1, 1);
+        }
+
+        ctx.drawImage(sprite, -drawWidth / 2, 0, drawWidth, drawHeight);
+        ctx.restore();
+      }
+
+      function drawEnemySprite(enemy) {
+        const sprite = spriteImages.enemy;
+        if (!sprite || !sprite.complete) {
+          ctx.fillStyle = enemy.color;
+          ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+          return;
+        }
+
+        const drawWidth = enemy.width * 1.25;
+        const drawHeight = enemy.height * 1.25;
+
+        ctx.save();
+        ctx.translate(enemy.x + enemy.width / 2, enemy.y - (drawHeight - enemy.height) / 2);
+
+        if (enemy.direction < 0) {
+          ctx.scale(-1, 1);
+        }
+
+        ctx.drawImage(sprite, -drawWidth / 2, 0, drawWidth, drawHeight);
+        ctx.restore();
+      }
+
+      function drawBackgroundItem(item) {
+        if (item.type === 'tree' && spriteImages.tree.complete) {
+          ctx.drawImage(spriteImages.tree, item.x, item.y, item.w, item.h);
+        }
+      }
+
+      function getBackgroundImage(src) {
+        if (!backgroundCache[src]) {
+          const image = new Image();
+          image.src = src;
+          backgroundCache[src] = image;
+        }
+
+        return backgroundCache[src];
+      }
+
+      function drawFixedBackground() {
+        const baseBackground = backgroundLevel || '#1d3557';
+
+        if (typeof baseBackground === 'string' && baseBackground.startsWith('/')) {
+          const backgroundImage = getBackgroundImage(baseBackground);
+
+          if (backgroundImage.complete) {
+            ctx.drawImage(backgroundImage, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+            return;
+          }
+        }
+
+        ctx.fillStyle = baseBackground;
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      }
 
       // --- RENDERIZAÇÃO E CÂMERA ---
       function render() {
         // 1. Limpa a tela
         ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-        // 2. Calcula a posição da Câmera
+        // 2. Desenha o fundo fixo na tela
+        drawFixedBackground();
+
+        // 3. Calcula a posição da Câmera
         const myPlayer = players[myId];
         if (myPlayer) {
           cameraX = myPlayer.x - CANVAS_WIDTH / 2 + myPlayer.width / 2;
           cameraX = Math.max(0, Math.min(cameraX, worldWidth - CANVAS_WIDTH));
         }
 
-        // 3. Salva o estado original do Canvas
+        // 4. Salva o estado original do Canvas
         ctx.save();
 
-        // 4. Move o mundo inteiro para a esquerda com base no Scroll
+        // 5. Move o mundo inteiro para a esquerda com base no Scroll
         ctx.translate(-cameraX, 0);
 
         // --- DESENHAR O JOGO (Afetado pela câmera) ---
+
+        backgroundItems.forEach((item) => {
+          drawBackgroundItem(item);
+        });
 
         // Desenhar Plataformas
         platforms.forEach((plat) => {
@@ -171,14 +322,18 @@
           ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
         });
 
+        enemies.forEach((enemy) => {
+          drawEnemySprite(enemy);
+        });
+
         // Desenhar Jogadores
         for (let id in players) {
           const p = players[id];
-          ctx.fillStyle = p.color;
-          ctx.fillRect(p.x, p.y, p.width, p.height);
+          drawPlayerSprite(p);
 
+          // user border
           if (id === myId) {
-            ctx.strokeStyle = '#ffffff';
+            ctx.strokeStyle = 'transparent';
             ctx.lineWidth = 2;
             ctx.strokeRect(p.x, p.y, p.width, p.height);
           }
