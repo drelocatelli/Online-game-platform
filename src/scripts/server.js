@@ -2,7 +2,16 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-const { getPlatforms, getWorldWidth, getBackgroundItems, getCurrentLevel, setLevel, getBackgroundLevel } = require('./levels.js');
+const {
+  getPlatforms,
+  getWorldWidth,
+  getBackgroundItems,
+  getCurrentLevel,
+  setLevel,
+  getBackgroundLevel,
+  getFloorBackground,
+  getEnemiesLevel,
+} = require('./levels.js');
 
 const app = express();
 const server = http.createServer(app);
@@ -25,6 +34,10 @@ const enemies = [];
 const colors = ['#ff4d4d', '#4da6ff', '#4dff88', '#ffea4d', '#ff4dff'];
 const outfitHues = [0, 40, 80, 140, 200, 260, 320];
 
+function cloneEnemies(levelEnemies) {
+  return (levelEnemies || []).map((enemy) => ({ ...enemy }));
+}
+
 function pickUniqueOutfitHue() {
   const usedHues = new Set(Object.values(players).map((player) => player.outfitHue));
   const availableHues = outfitHues.filter((hue) => !usedHues.has(hue));
@@ -34,53 +47,6 @@ function pickUniqueOutfitHue() {
   }
 
   return outfitHues[Math.floor(Math.random() * outfitHues.length)];
-}
-
-function createEnemies() {
-  return [
-    {
-      id: 'enemy-1',
-      x: 250,
-      y: 470,
-      width: 28,
-      height: 28,
-      color: '#ff4d4d',
-      direction: 1,
-      speed: ENEMY_SPEED,
-      minX: 200,
-      maxX: 380,
-      grounded: true,
-    },
-    {
-      id: 'enemy-2',
-      x: 760,
-      y: 405,
-      width: 28,
-      height: 28,
-      color: '#ff9f1c',
-      direction: 1,
-      speed: ENEMY_SPEED,
-      minX: 720,
-      maxX: 810,
-      grounded: true,
-    },
-    {
-      id: 'enemy-3',
-      x: 1440,
-      y: 445,
-      width: 28,
-      height: 28,
-      color: '#9d4edd',
-      direction: -1,
-      speed: ENEMY_SPEED,
-      minX: 1400,
-      maxX: 1540,
-      grounded: true,
-    },
-  ].map((enemy) => ({
-    ...enemy,
-    x: Math.max(enemy.minX, Math.min(enemy.x, enemy.maxX - enemy.width)),
-  }));
 }
 
 app.get('/', (req, res) => {
@@ -106,14 +72,18 @@ io.on('connection', (socket) => {
   };
 
 
+  enemies.length = 0;
+  enemies.push(...cloneEnemies(getEnemiesLevel()));
+
   socket.emit('init', {
     id: socket.id,
     platforms: getPlatforms(),
     level: getCurrentLevel(),
     worldWidth: getWorldWidth(),
     backgroundItems: getBackgroundItems(),
-    enemies: createEnemies(),
-    backgroundLevel: getBackgroundLevel()
+    enemies: cloneEnemies(getEnemiesLevel()),
+    backgroundLevel: getBackgroundLevel(),
+    floorBackground: getFloorBackground(),
   });
 
   socket.on('playerInput', (inputs) => {
@@ -126,15 +96,16 @@ io.on('connection', (socket) => {
   socket.on('changeLevel', (newLevel) => {
     if (setLevel(newLevel)) {
       enemies.length = 0;
-      enemies.push(...createEnemies());
+      enemies.push(...cloneEnemies(getEnemiesLevel()));
 
       io.emit('levelChanged', {
         level: getCurrentLevel(),
         platforms: getPlatforms(),
         worldWidth: getWorldWidth(),
         backgroundItems: getBackgroundItems(),
-        enemies: createEnemies(),
-        backgroundLevel: getBackgroundLevel()
+        enemies: cloneEnemies(getEnemiesLevel()),
+        backgroundLevel: getBackgroundLevel(),
+        floorBackground: getFloorBackground(),
       });
     }
   });
@@ -145,7 +116,7 @@ io.on('connection', (socket) => {
   });
 });
 
-enemies.push(...createEnemies());
+enemies.push(...cloneEnemies(getEnemiesLevel()));
 
 setInterval(() => {
   const currentPlatforms = getPlatforms();

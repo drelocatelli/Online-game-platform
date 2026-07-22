@@ -2,11 +2,53 @@ const levels = {
   1: {
     worldWidth: 2400,
     backgroundLevel: '/sprites/backgrounds/background1.png',
+    floorBackground: '/sprites/scenary/floor1.png',
     backgroundItems: [
-      { type: 'tree', x: 120, y: 428, w: 110, h: 150 },
-      { type: 'tree', x: 620, y: 360, w: 110, h: 140 },
-      { type: 'tree', x: 1460, y: 390, w: 110, h: 150 },
-      { type: 'tree', x: 2060, y: 300, w: 100, h: 140 },
+      { type: 'tree', x: 120, y: 428, w: 110, h: 150, background: '/sprites/scenary/tree.png' },
+      { type: 'tree', x: 620, y: 360, w: 110, h: 140, background: '/sprites/scenary/tree.png' },
+      { type: 'tree', x: 1460, y: 390, w: 110, h: 150, background: '/sprites/scenary/tree.png' },
+      { type: 'tree', x: 2060, y: 300, w: 100, h: 140, background: '/sprites/scenary/tree.png' },
+    ],
+    enemies: [
+      {
+        id: 'enemy-1',
+        x: 250,
+        y: 470,
+        width: 28,
+        height: 28,
+        background: '/sprites/enemy.svg',
+        direction: 1,
+        speed: 1.6,
+        minX: 200,
+        maxX: 380,
+        grounded: true,
+      },
+      {
+        id: 'enemy-2',
+        x: 760,
+        y: 405,
+        width: 28,
+        height: 28,
+        background: '/sprites/enemy.svg',
+        direction: 1,
+        speed: 1.6,
+        minX: 720,
+        maxX: 810,
+        grounded: true,
+      },
+      {
+        id: 'enemy-3',
+        x: 1440,
+        y: 445,
+        width: 28,
+        height: 28,
+        background: '/sprites/enemy.svg',
+        direction: -1,
+        speed: 1.6,
+        minX: 1400,
+        maxX: 1540,
+        grounded: true,
+      },
     ],
     platforms: [
 
@@ -39,10 +81,12 @@ const levels = {
   2: {
     worldWidth: 2000,
     backgroundLevel: '#f4a261',
+    floorBackground: '/sprites/scenary/floor1.png',
     backgroundItems: [
-      { type: 'tree', x: 180, y: 360, w: 110, h: 140 },
-      { type: 'tree', x: 980, y: 240, w: 110, h: 150 },
+      { type: 'tree', x: 180, y: 360, w: 110, h: 140, background: '/sprites/scenary/tree.png' },
+      { type: 'tree', x: 980, y: 240, w: 110, h: 150, background: '/sprites/scenary/tree.png' },
     ],
+    enemies: [],
     platforms: [
       { x: 50, y: 520, w: 1800, h: 20, color: '#00adb5' },
       { x: 500, y: 380, w: 200, h: 20, color: '#00adb5' },
@@ -65,6 +109,10 @@ function getBackgroundItems() {
   return (levels[currentLevel] || levels[1]).backgroundItems || [];
 }
 
+function getFloorBackground() {
+  return (levels[currentLevel] || levels[1]).floorBackground || '/sprites/scenary/floor1.png';
+}
+
 function setLevel(levelNumber) {
   if (levels[levelNumber]) {
     currentLevel = levelNumber;
@@ -77,11 +125,17 @@ function getBackgroundLevel() {
   return (levels[currentLevel] || levels[1]).backgroundLevel || '#1d3557';
 }
 
+function getEnemiesLevel() {
+  return (levels[currentLevel] || levels[1]).enemies || [];
+}
+
 module.exports = {
   levels,
   getPlatforms,
   getWorldWidth,
   getBackgroundItems,
+  getFloorBackground,
+  getEnemiesLevel,
   setLevel,
   getCurrentLevel: () => currentLevel,
   getBackgroundLevel,

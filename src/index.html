@@ -78,6 +78,7 @@
         jump: new Image(),
         enemy: new Image(),
         tree: new Image(),
+        floor: new Image(),
       };
 
       const backgroundCache = {};
@@ -87,6 +88,7 @@
       spriteImages.jump.src = '/sprites/jump.svg';
       spriteImages.enemy.src = '/sprites/enemy.svg';
       spriteImages.tree.src = '/sprites/scenary/tree.png';
+      spriteImages.floor.src = '/sprites/scenary/floor1.png';
 
       let myId = null;
       let players = {};
@@ -96,7 +98,8 @@
       let worldWidth = 800;
       let cameraX = 0;
       let currentLevel = 1;
-      let backgroundLevel = '/sprites/backgrounds/background1.png';
+      let backgroundLevel;
+      let floorBackground;
 
       // Posição do mouse
       const mouse = { x: 0, y: 0 };
@@ -180,6 +183,7 @@
         backgroundItems = data.backgroundItems || [];
         enemies = data.enemies || [];
         backgroundLevel = data.backgroundLevel || backgroundLevel;
+        floorBackground = data.floorBackground || floorBackground;
       });
 
       socket.on('state', (serverState) => {
@@ -195,6 +199,7 @@
         backgroundItems = data.backgroundItems || [];
         enemies = data.enemies || [];
         backgroundLevel = data.backgroundLevel || backgroundLevel;
+        floorBackground = data.floorBackground || floorBackground;
         render();
       });
 
@@ -236,30 +241,50 @@
       }
 
       function drawEnemySprite(enemy) {
-        const sprite = spriteImages.enemy;
-        if (!sprite || !sprite.complete) {
-          ctx.fillStyle = enemy.color;
-          ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+        const enemyBackground = enemy.background;
+        const enemyImage = getBackgroundImage(enemyBackground);
+
+        if (enemyImage.complete) {
+          const drawWidth = enemy.width * 1.25;
+          const drawHeight = enemy.height * 1.25;
+
+          ctx.save();
+          ctx.translate(enemy.x + enemy.width / 2, enemy.y - (drawHeight - enemy.height) / 2);
+
+          if (enemy.direction < 0) {
+            ctx.scale(-1, 1);
+          }
+
+          ctx.drawImage(enemyImage, -drawWidth / 2, 0, drawWidth, drawHeight);
+          ctx.restore();
           return;
         }
 
-        const drawWidth = enemy.width * 1.25;
-        const drawHeight = enemy.height * 1.25;
-
-        ctx.save();
-        ctx.translate(enemy.x + enemy.width / 2, enemy.y - (drawHeight - enemy.height) / 2);
-
-        if (enemy.direction < 0) {
-          ctx.scale(-1, 1);
-        }
-
-        ctx.drawImage(sprite, -drawWidth / 2, 0, drawWidth, drawHeight);
-        ctx.restore();
+        ctx.fillStyle = enemy.color;
+        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
       }
 
       function drawBackgroundItem(item) {
-        if (item.type === 'tree' && spriteImages.tree.complete) {
-          ctx.drawImage(spriteImages.tree, item.x, item.y, item.w, item.h);
+        const itemBackground = item.background || '/sprites/scenary/tree.png';
+        const itemImage = getBackgroundImage(itemBackground);
+
+        if (item.type === 'tree' && itemImage.complete) {
+          ctx.drawImage(itemImage, item.x, item.y, item.w, item.h);
+        }
+      }
+
+      function drawPlatformSprite(plat) {
+        const textureSource = floorBackground || '/sprites/scenary/floor1.png';
+        const textureImage = getBackgroundImage(textureSource);
+
+        // ctx.fillStyle = plat.color || '#e94560';
+        ctx.fillStyle = 'transparent';
+        ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+
+        if (typeof textureSource === 'string' && textureSource.startsWith('/') && textureImage.complete) {
+          ctx.save();
+          ctx.drawImage(textureImage, plat.x, plat.y, plat.w, plat.h);
+          ctx.restore();
         }
       }
 
@@ -318,8 +343,7 @@
 
         // Desenhar Plataformas
         platforms.forEach((plat) => {
-          ctx.fillStyle = plat.color;
-          ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+          drawPlatformSprite(plat);
         });
 
         enemies.forEach((enemy) => {
