@@ -13,7 +13,7 @@ module.exports = {
         y: 486,
         width: 50,
         height: 43,
-        background: '/sprites/enemy.png',
+        background: '/sprites/enemy.gif',
         direction: 1,
         speed: 1.4,
         minX: 500, // limite da esquerda (menor que x)

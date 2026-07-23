@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 
 <style>
   *,
@@ -26,12 +26,12 @@
   // ==========================================
   // CONFIGURAÇÕES DE ESCALA VISUAL
   // ==========================================
-  const PLAYER_RENDER_SCALE = 2.9;     // Aumentou o Player (Era 1.5)
-  const ITEM_RENDER_SCALE = 5.4;       // <--- NOVO: Aumenta as árvores/itens
-  const FLOOR_TILE_SCALE = 1.5;        // <--- NOVO: Aumenta a textura do chão/plataforma
-  
-  const walkGifCanvas = document.createElement('canvas');
+  const PLAYER_RENDER_SCALE = 2.9; // Aumentou o Player (Era 1.5)
+  const ITEM_RENDER_SCALE = 5.4; // <--- NOVO: Aumenta as árvores/itens
+  const FLOOR_TILE_SCALE = 1.5; // <--- NOVO: Aumenta a textura do chão/plataforma
+
   let isWalkGifLoaded = false;
+  let isEnemyGifLoaded = false;
 
   const spriteImages = {
     idle: new Image(),
@@ -47,7 +47,7 @@
   spriteImages.idle.src = '/sprites/idle.png';
   spriteImages.walk.src = '/sprites/walk.gif';
   spriteImages.jump.src = '/sprites/jump.png';
-  spriteImages.enemy.src = '/sprites/enemy.png';
+  spriteImages.enemy.src = '/sprites/enemy.gif';
   spriteImages.tree.src = '/sprites/scenary/tree.png';
   spriteImages.floor.src = '/sprites/scenary/floor1.png';
 
@@ -62,7 +62,12 @@
   let backgroundLevel;
   let floorBackground;
   let debug = false;
+
   const imageCache = {};
+  const gifCache = {};
+
+  const walkSprite = loadGif('/sprites/walk.gif');
+  const enemySprite = loadGif('/sprites/enemy.gif');
 
   // Posição do mouse
   const mouse = { x: 0, y: 0 };
@@ -89,8 +94,63 @@
     isWalkGifLoaded = true;
   }
 
-  // Passamos o nosso canvas em memória diretamente no gifler
-  gifler('/sprites/walk.gif').frames(walkGifCanvas, onDrawWalkFrame);
+  function onDrawEnemyFrame(ctx, frame) {
+    ctx.canvas.width = frame.width;
+    ctx.canvas.height = frame.height;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(frame.buffer, frame.x, frame.y, frame.width, frame.height);
+    isEnemyGifLoaded = true;
+  }
+
+  function getGif(url) {
+    if (!url) return null;
+
+    // Se já existe no cache, retorna o objeto com o canvas e status
+    if (gifCache[url]) {
+      return gifCache[url];
+    }
+
+    // Se não existe, cria a estrutura e salva no cache
+    const gifCanvas = document.createElement('canvas');
+    const gifData = {
+      canvas: gifCanvas,
+      isLoaded: false,
+    };
+
+    gifCache[url] = gifData;
+
+    // Inicia o carregamento com a Gifler
+    gifler(url).frames(gifCanvas, (gifCtx, frame) => {
+      gifCtx.canvas.width = frame.width;
+      gifCtx.canvas.height = frame.height;
+      gifCtx.globalCompositeOperation = 'source-over';
+      gifCtx.drawImage(frame.buffer, frame.x, frame.y, frame.width, frame.height);
+
+      gifData.isLoaded = true; // Marca como carregado assim que o 1º frame chega
+    });
+
+    return gifData;
+  }
+
+  // Função auxiliar que cria o canvas e gerencia o GIF
+  function loadGif(url) {
+    const gifCanvas = document.createElement('canvas');
+    const gifData = {
+      canvas: gifCanvas,
+      isLoaded: false,
+    };
+
+    gifler(url).frames(gifCanvas, (gifCtx, frame) => {
+      gifCtx.canvas.width = frame.width;
+      gifCtx.canvas.height = frame.height;
+      gifCtx.globalCompositeOperation = 'source-over';
+      gifCtx.drawImage(frame.buffer, frame.x, frame.y, frame.width, frame.height);
+
+      gifData.isLoaded = true; // Avisa que o primeiro frame já carregou
+    });
+
+    return gifData;
+  }
 
   function sendInputs() {
     socket.emit('playerInput', keys);
@@ -161,7 +221,7 @@
     enemies = data.enemies || [];
     backgroundLevel = data.backgroundLevel || backgroundLevel;
     floorBackground = data.floorBackground || floorBackground;
-    debug: data.debug || false
+    debug: data.debug || false;
   });
 
   socket.on('state', (serverState) => {
@@ -197,7 +257,7 @@
     const sprite = getPlayerSprite(player);
 
     // Se estiver andando mas o GIF ainda não carregou, usa fallback de cor
-    if (sprite === 'walk' && !isWalkGifLoaded) {
+    if (sprite === 'walk' && !walkSprite.isLoaded) {
       ctx.fillStyle = player.color;
       ctx.fillRect(player.x, player.y - 14, player.width, player.height);
       return;
@@ -218,44 +278,53 @@
     ctx.save();
     ctx.filter = `hue-rotate(${outfitHue}deg) saturate(1.15) brightness(1.03)`;
 
-    ctx.translate(
-      player.x + player.width / 2,
-      player.y - 14 + player.height + 20
-    );
+    ctx.translate(player.x + player.width / 2, player.y - 14 + player.height + 20);
 
     if (facing === 'left') {
       ctx.scale(-1, 1);
     }
 
     // Se for 'walk', usa nosso walkGifCanvas; caso contrário, a imagem normal
-    const imageToDraw = sprite === 'walk' ? walkGifCanvas : sprite;
+    const imageToDraw = sprite === 'walk' ? walkSprite.canvas : sprite;
 
     ctx.drawImage(imageToDraw, -drawWidth / 2, -drawHeight, drawWidth, drawHeight);
     ctx.restore();
   }
 
   function drawEnemySprite(enemy) {
-    const enemyBackground = enemy.background;
-    const enemyImage = getBackgroundImage(enemyBackground);
+    // Pega a URL vinda do backend ou usa uma padrão
+    const gifUrl = enemy.background || '/sprites/enemy.gif';
+    const enemyGif = getGif(gifUrl);
 
-    if (enemyImage.complete) {
-      const drawWidth = enemy.width * 1.25;
-      const drawHeight = enemy.height * 1.25;
+    const drawWidth = enemy.width * 1.25;
+    const drawHeight = enemy.height * 1.25;
 
-      ctx.save();
-      ctx.translate(enemy.x + enemy.width / 2, enemy.y - (drawHeight - enemy.height) / 2);
+    ctx.save();
+    ctx.translate(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2);
 
-      if (enemy.direction < 0) {
-        ctx.scale(-1, 1);
-      }
-
-      ctx.drawImage(enemyImage, -drawWidth / 2, 0, drawWidth, drawHeight);
-      ctx.restore();
-      return;
+    if (enemy.direction < 0) {
+      ctx.scale(-1, 1);
     }
 
-    ctx.fillStyle = enemy.color;
-    ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+    // Se o GIF do inimigo já baixou o 1º frame, desenha ele
+    if (enemyGif && enemyGif.isLoaded) {
+      ctx.drawImage(enemyGif.canvas, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+    } else {
+      // Fallback vermelho enquanto o GIF carrega
+      ctx.fillStyle = enemy.color || 'red';
+      ctx.fillRect(-enemy.width / 2, -enemy.height / 2, enemy.width, enemy.height);
+    }
+
+    ctx.restore();
+  }
+
+  function drawBackgroundItem(item) {
+    const itemBackground = item.background || '/sprites/scenary/tree.png';
+    const itemImage = getBackgroundImage(itemBackground);
+
+    if (item.type === 'tree' && itemImage.complete) {
+      ctx.drawImage(itemImage, item.x, item.y, item.w, item.h);
+    }
   }
 
   function drawBackgroundItem(item) {
@@ -271,7 +340,8 @@
     const textureSource = floorBackground || '/sprites/scenary/floor2.png'; //[cite: 1]
     const textureImage = getBackgroundImage(textureSource); //[cite: 1]
 
-    if (textureImage && textureImage.complete && textureImage.naturalWidth > 0) { //[cite: 1]
+    if (textureImage && textureImage.complete && textureImage.naturalWidth > 0) {
+      //[cite: 1]
       ctx.save(); //[cite: 1]
 
       // Recorta a área da plataforma
@@ -285,7 +355,8 @@
       const tileH = plat.h; // Altura ajustada[cite: 1]
 
       // Repete a imagem ajustada ao longo da plataforma
-      for (let x = plat.x; x < plat.x + plat.w; x += tileW) { //[cite: 1]
+      for (let x = plat.x; x < plat.x + plat.w; x += tileW) {
+        //[cite: 1]
         ctx.drawImage(textureImage, x, plat.y, tileW, tileH); //[cite: 1]
       }
 
@@ -297,7 +368,7 @@
     }
 
     // --- BORDA VERMELHA ---
-    if(plat.debug || debug) {
+    if (plat.debug || debug) {
       ctx.save();
       ctx.strokeStyle = 'red';
       ctx.lineWidth = 2;
@@ -385,21 +456,21 @@
     ctx.restore();
 
     // --- DESENHAR HUD / UI (Fixo na tela) ---
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '14px Arial';
-  
-      // Posição na tela (0 a 800, 0 a 600)
-      ctx.fillText(`Mouse Tela: X: ${mouse.x}, Y: ${mouse.y}`, 10, 20);
-  
-      // Posição no mundo do jogo (considerando o scroll da câmera)
-      const worldMouseX = Math.round(mouse.x + cameraX);
-      ctx.fillText(`Mouse Mundo: X: ${worldMouseX}, Y: ${mouse.y}`, 10, 40);
-  
-      // Posição do Jogador no Mundo
-      if (myPlayer) {
-        const playerX = Math.round(myPlayer.x);
-        const playerY = Math.round(myPlayer.y);
-        ctx.fillText(`Player Mundo: X: ${playerX}, Y: ${playerY}`, 10, 60);
-      }
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '14px Arial';
+
+    // Posição na tela (0 a 800, 0 a 600)
+    ctx.fillText(`Mouse Tela: X: ${mouse.x}, Y: ${mouse.y}`, 10, 20);
+
+    // Posição no mundo do jogo (considerando o scroll da câmera)
+    const worldMouseX = Math.round(mouse.x + cameraX);
+    ctx.fillText(`Mouse Mundo: X: ${worldMouseX}, Y: ${mouse.y}`, 10, 40);
+
+    // Posição do Jogador no Mundo
+    if (myPlayer) {
+      const playerX = Math.round(myPlayer.x);
+      const playerY = Math.round(myPlayer.y);
+      ctx.fillText(`Player Mundo: X: ${playerX}, Y: ${playerY}`, 10, 60);
+    }
   }
 </script>
