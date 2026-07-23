@@ -329,11 +329,50 @@
 
   function drawBackgroundItem(item) {
     const itemBackground = item.background || '/sprites/scenary/tree.png';
-    const itemImage = getBackgroundImage(itemBackground);
+    const sprite = getSprite(itemBackground);
 
-    if (item.type === 'tree' && itemImage.complete) {
-      ctx.drawImage(itemImage, item.x, item.y, item.w, item.h);
+    if (!sprite) return;
+
+    // Se for GIF animado e já carregou o 1º frame
+    if (sprite.isGif && sprite.isLoaded) {
+      ctx.drawImage(sprite.canvas, item.x, item.y, item.w, item.h);
+    } 
+    // Se for Imagem Estática (PNG/JPG) e já terminou de baixar
+    else if (!sprite.isGif && sprite.image.complete) {
+      ctx.drawImage(sprite.image, item.x, item.y, item.w, item.h);
     }
+  }
+
+  function getSprite(src) {
+    if (!src) return null;
+
+    // Se for um GIF, usa a lógica do Gifler
+    if (src.endsWith('.gif')) {
+      if (gifCache[src]) return gifCache[src];
+
+      const gifCanvas = document.createElement('canvas');
+      const gifData = { canvas: gifCanvas, isLoaded: false, isGif: true };
+      gifCache[src] = gifData;
+
+      gifler(src).frames(gifCanvas, (gifCtx, frame) => {
+        gifCtx.canvas.width = frame.width;
+        gifCtx.canvas.height = frame.height;
+        gifCtx.globalCompositeOperation = 'source-over';
+        gifCtx.drawImage(frame.buffer, frame.x, frame.y, frame.width, frame.height);
+        gifData.isLoaded = true;
+      });
+
+      return gifData;
+    }
+
+    // Se for Imagem Normal (.png, .jpg, etc.)
+    if (!imageCache[src]) {
+      const img = new Image();
+      img.src = src;
+      imageCache[src] = img;
+    }
+
+    return { image: imageCache[src], isLoaded: imageCache[src].complete, isGif: false };
   }
 
   function drawPlatformSprite(plat) {

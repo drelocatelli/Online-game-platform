@@ -3,8 +3,8 @@ module.exports = {
     backgroundLevel: '/sprites/backgrounds/background1.png',
     floorBackground: '/sprites/scenary/floor2.png',
     backgroundItems: [
-      { type: 'tree', x: 200, y: 337, w: 110, h: 200, background: '/sprites/scenary/tree.png' },
-      { type: 'tree', x: 300, y: 337, w: 110, h: 200, background: '/sprites/scenary/tree.png' },
+      { type: 'tree', x: 200, y: 342, w: 110, h: 200, background: '/sprites/scenary/tree.gif' },
+      { type: 'tree', x: 400, y: 342, w: 110, h: 200, background: '/sprites/scenary/tree.gif' },
     ],
     enemies: [
       {
