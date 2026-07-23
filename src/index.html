@@ -12,8 +12,7 @@
         justify-content: center;
         align-items: center;
         min-height: 100vh;
-        background:
-          radial-gradient(circle at top, rgba(125, 211, 252, 0.85), transparent 30%),
+        background: radial-gradient(circle at top, rgba(125, 211, 252, 0.85), transparent 30%),
           linear-gradient(180deg, #16213e 0%, #0f3460 55%, #09111f 100%);
         background-attachment: fixed;
         background-size: cover;
@@ -28,26 +27,23 @@
         position: fixed;
         inset: 0;
         pointer-events: none;
-        background:
-          radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent 18%),
+        background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.18), transparent 18%),
           radial-gradient(circle at 80% 10%, rgba(255, 255, 255, 0.12), transparent 15%),
           linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 50%);
         z-index: -1;
       }
 
-      h1 {
-        margin-bottom: 10px;
-        color: #e94560;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-        text-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
+      #bg {
+        background: url('/sprites/backgrounds/profile.png') repeat;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: -2;
+        width: 100%;
+        height: 100%;
+        opacity: 0.1;
       }
-      canvas {
-        background: transparent;
-        border: 4px solid #0f3460;
-        box-shadow: 0 0 30px rgba(15, 52, 96, 0.6);
-        border-radius: 12px;
-      }
+
       .controls-info {
         margin-top: 15px;
         background: rgba(255, 255, 255, 0.05);
@@ -55,335 +51,55 @@
         border-radius: 8px;
         color: #ccc;
       }
+
+      #platform-game {
+        width: 810px;
+        height: 610px;
+        overflow: hidden;
+      }
     </style>
   </head>
   <body>
+    <div id="bg"></div>
     <h1>Jogo de plataforma da Dessa</h1>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
-
+    <iframe src="/game" id="platform-game" frameborder="0"></iframe>
     <div class="controls-info">
       <p>Use <strong>W / A / D</strong> ou <strong>Setas</strong> para se mover e pular.</p>
     </div>
-
-    <!-- SDK do Socket.IO servido automaticamente pelo Node.js -->
-    <script src="/socket.io/socket.io.js"></script>
-    <script>
-      const socket = io();
-      const canvas = document.getElementById('gameCanvas');
-      const ctx = canvas.getContext('2d');
-
-      const spriteImages = {
-        idle: new Image(),
-        walk: new Image(),
-        jump: new Image(),
-        enemy: new Image(),
-        tree: new Image(),
-        floor: new Image(),
-      };
-
-      const backgroundCache = {};
-
-      spriteImages.idle.src = '/sprites/idle.svg';
-      spriteImages.walk.src = '/sprites/walk.svg';
-      spriteImages.jump.src = '/sprites/jump.svg';
-      spriteImages.enemy.src = '/sprites/enemy.svg';
-      spriteImages.tree.src = '/sprites/scenary/tree.png';
-      spriteImages.floor.src = '/sprites/scenary/floor1.png';
-
-      let myId = null;
-      let players = {};
-      let enemies = [];
-      let backgroundItems = [];
-      let platforms = [];
-      let worldWidth = 800;
-      let cameraX = 0;
-      let currentLevel = 1;
-      let backgroundLevel;
-      let floorBackground;
-
-      // Posição do mouse
-      const mouse = { x: 0, y: 0 };
-
-      const CANVAS_WIDTH = 800;
-      const CANVAS_HEIGHT = 600;
-      const PLAYER_RENDER_SCALE = 1.50;
-
-      // --- GERENCIAMENTO DE INPUTS (TECLADO) ---
-      const keys = {
-        left: false,
-        right: false,
-        up: false,
-      };
-
-      function sendInputs() {
-        socket.emit('playerInput', keys);
-      }
-
-      window.addEventListener('keydown', (e) => {
-        let changed = false;
-        if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') {
-          if (!keys.left) {
-            keys.left = true;
-            changed = true;
-          }
-        }
-        if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') {
-          if (!keys.right) {
-            keys.right = true;
-            changed = true;
-          }
-        }
-        if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp' || e.key === ' ') {
-          if (!keys.up) {
-            keys.up = true;
-            changed = true;
-          }
-        }
-        if (e.key === 'l' || e.key === 'L') {
-          currentLevel = currentLevel === 1 ? 2 : 1;
-          socket.emit('changeLevel', currentLevel);
-        }
-
-        if (changed) sendInputs();
-      });
-
-      window.addEventListener('keyup', (e) => {
-        let changed = false;
-        if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') {
-          keys.left = false;
-          changed = true;
-        }
-        if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') {
-          keys.right = false;
-          changed = true;
-        }
-        if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp' || e.key === ' ') {
-          keys.up = false;
-          changed = true;
-        }
-
-        if (changed) sendInputs();
-      });
-
-      // --- RASTREAMENTO DO MOUSE ---
-      canvas.addEventListener('mousemove', (e) => {
-        const rect = canvas.getBoundingClientRect();
-        // Posição do mouse relativa ao Canvas (Tela)
-        mouse.x = Math.round(e.clientX - rect.left);
-        mouse.y = Math.round(e.clientY - rect.top);
-      });
-
-      // --- EVENTOS SOCKET.IO ---
-
-      socket.on('init', (data) => {
-        myId = data.id;
-        platforms = data.platforms;
-        worldWidth = data.worldWidth;
-        currentLevel = data.level || currentLevel;
-        backgroundItems = data.backgroundItems || [];
-        enemies = data.enemies || [];
-        backgroundLevel = data.backgroundLevel || backgroundLevel;
-        floorBackground = data.floorBackground || floorBackground;
-      });
-
-      socket.on('state', (serverState) => {
-        players = serverState.players || serverState;
-        enemies = serverState.enemies || [];
-        render();
-      });
-
-      socket.on('levelChanged', (data) => {
-        platforms = data.platforms;
-        worldWidth = data.worldWidth;
-        currentLevel = data.level || currentLevel;
-        backgroundItems = data.backgroundItems || [];
-        enemies = data.enemies || [];
-        backgroundLevel = data.backgroundLevel || backgroundLevel;
-        floorBackground = data.floorBackground || floorBackground;
-        render();
-      });
-
-      function getPlayerSprite(player) {
-        if (!player.grounded && player.vy < 0) {
-          return spriteImages.jump;
-        }
-
-        if (Math.abs(player.vx) > 0.5) {
-          return spriteImages.walk;
-        }
-
-        return spriteImages.idle;
-      }
-
-      function drawPlayerSprite(player) {
-        const sprite = getPlayerSprite(player);
-        if (!sprite || !sprite.complete) {
-          ctx.fillStyle = player.color;
-          ctx.fillRect(player.x, player.y, player.width, player.height);
-          return;
-        }
-
-        const facing = player.facing || (player.vx < 0 ? 'left' : 'right');
-        const drawWidth = player.width * PLAYER_RENDER_SCALE;
-        const drawHeight = player.height * PLAYER_RENDER_SCALE;
-        const outfitHue = player.outfitHue || 0;
-
-        ctx.save();
-        ctx.filter = `hue-rotate(${outfitHue}deg) saturate(1.15) brightness(1.03)`;
-        ctx.translate(player.x + player.width / 2, player.y - (drawHeight - player.height) / 2);
-
-        if (facing === 'left') {
-          ctx.scale(-1, 1);
-        }
-
-        ctx.drawImage(sprite, -drawWidth / 2, 0, drawWidth, drawHeight);
-        ctx.restore();
-      }
-
-      function drawEnemySprite(enemy) {
-        const enemyBackground = enemy.background;
-        const enemyImage = getBackgroundImage(enemyBackground);
-
-        if (enemyImage.complete) {
-          const drawWidth = enemy.width * 1.25;
-          const drawHeight = enemy.height * 1.25;
-
-          ctx.save();
-          ctx.translate(enemy.x + enemy.width / 2, enemy.y - (drawHeight - enemy.height) / 2);
-
-          if (enemy.direction < 0) {
-            ctx.scale(-1, 1);
-          }
-
-          ctx.drawImage(enemyImage, -drawWidth / 2, 0, drawWidth, drawHeight);
-          ctx.restore();
-          return;
-        }
-
-        ctx.fillStyle = enemy.color;
-        ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
-      }
-
-      function drawBackgroundItem(item) {
-        const itemBackground = item.background || '/sprites/scenary/tree.png';
-        const itemImage = getBackgroundImage(itemBackground);
-
-        if (item.type === 'tree' && itemImage.complete) {
-          ctx.drawImage(itemImage, item.x, item.y, item.w, item.h);
-        }
-      }
-
-      function drawPlatformSprite(plat) {
-        const textureSource = floorBackground || '/sprites/scenary/floor1.png';
-        const textureImage = getBackgroundImage(textureSource);
-
-        // ctx.fillStyle = plat.color || '#e94560';
-        ctx.fillStyle = 'transparent';
-        ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
-
-        if (typeof textureSource === 'string' && textureSource.startsWith('/') && textureImage.complete) {
-          ctx.save();
-          ctx.drawImage(textureImage, plat.x, plat.y, plat.w, plat.h);
-          ctx.restore();
-        }
-      }
-
-      function getBackgroundImage(src) {
-        if (!backgroundCache[src]) {
-          const image = new Image();
-          image.src = src;
-          backgroundCache[src] = image;
-        }
-
-        return backgroundCache[src];
-      }
-
-      function drawFixedBackground() {
-        const baseBackground = backgroundLevel || '#1d3557';
-
-        if (typeof baseBackground === 'string' && baseBackground.startsWith('/')) {
-          const backgroundImage = getBackgroundImage(baseBackground);
-
-          if (backgroundImage.complete) {
-            ctx.drawImage(backgroundImage, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-            return;
-          }
-        }
-
-        ctx.fillStyle = baseBackground;
-        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-      }
-
-      // --- RENDERIZAÇÃO E CÂMERA ---
-      function render() {
-        // 1. Limpa a tela
-        ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-        // 2. Desenha o fundo fixo na tela
-        drawFixedBackground();
-
-        // 3. Calcula a posição da Câmera
-        const myPlayer = players[myId];
-        if (myPlayer) {
-          cameraX = myPlayer.x - CANVAS_WIDTH / 2 + myPlayer.width / 2;
-          cameraX = Math.max(0, Math.min(cameraX, worldWidth - CANVAS_WIDTH));
-        }
-
-        // 4. Salva o estado original do Canvas
-        ctx.save();
-
-        // 5. Move o mundo inteiro para a esquerda com base no Scroll
-        ctx.translate(-cameraX, 0);
-
-        // --- DESENHAR O JOGO (Afetado pela câmera) ---
-
-        backgroundItems.forEach((item) => {
-          drawBackgroundItem(item);
-        });
-
-        // Desenhar Plataformas
-        platforms.forEach((plat) => {
-          drawPlatformSprite(plat);
-        });
-
-        enemies.forEach((enemy) => {
-          drawEnemySprite(enemy);
-        });
-
-        // Desenhar Jogadores
-        for (let id in players) {
-          const p = players[id];
-          drawPlayerSprite(p);
-
-          // user border
-          if (id === myId) {
-            ctx.strokeStyle = 'transparent';
-            ctx.lineWidth = 2;
-            ctx.strokeRect(p.x, p.y, p.width, p.height);
-          }
-        }
-
-        // 5. Restaura o Canvas para a posição normal
-        ctx.restore();
-
-        // --- DESENHAR HUD / UI (Fixo na tela) ---
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '14px Arial';
-
-        // Posição na tela (0 a 800, 0 a 600)
-        ctx.fillText(`Mouse Tela: X: ${mouse.x}, Y: ${mouse.y}`, 10, 20);
-
-        // Posição no mundo do jogo (considerando o scroll da câmera)
-        const worldMouseX = Math.round(mouse.x + cameraX);
-        ctx.fillText(`Mouse Mundo: X: ${worldMouseX}, Y: ${mouse.y}`, 10, 40);
-
-        // Posição do Jogador no Mundo
-        if (myPlayer) {
-          const playerX = Math.round(myPlayer.x);
-          const playerY = Math.round(myPlayer.y);
-          ctx.fillText(`Player Mundo: X: ${playerX}, Y: ${playerY}`, 10, 60);
-        }
-      }
-    </script>
   </body>
+
+<script>
+  const iframe = document.getElementById('platform-game');
+
+  // Teclas que o jogo usa e que NÃO devem rolar a página
+  const teclasDoJogo = [
+    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+    'KeyW', 'KeyS', 'KeyA', 'KeyD',
+    ' ', 'Spacebar'
+  ];
+
+  function travarRolagemDoTeclado(e) {
+    if (teclasDoJogo.includes(e.code) || teclasDoJogo.includes(e.key)) {
+      e.preventDefault(); // Impede a rolagem padrão da tecla
+    }
+  }
+
+  // 1. Bloqueia quando o foco está na PÁGINA PRINCIPAL
+  window.addEventListener('keydown', travarRolagemDoTeclado, { passive: false });
+
+  // 2. Bloqueia quando o foco está DENTRO DO IFRAME
+  iframe.onload = () => {
+    try {
+      const docIframe = iframe.contentWindow.document;
+      
+      // Aplica a trava diretamente dentro do iframe do jogo
+      docIframe.addEventListener('keydown', travarRolagemDoTeclado, { passive: false });
+      
+      // Dá o foco para o iframe
+      iframe.contentWindow.focus();
+    } catch (err) {
+      console.error('Erro ao acessar iframe:', err);
+    }
+  };
+</script>
 </html>

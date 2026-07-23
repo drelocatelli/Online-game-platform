@@ -53,6 +53,10 @@ app.get('/', (req, res) => {
   res.sendFile(path.resolve(__dirname, '../index.html'));
 });
 
+app.get('/game', (req, res) => {
+  res.sendFile(path.resolve(__dirname, '../game.html'));
+});
+
 io.on('connection', (socket) => {
   console.log(`Jogador conectado: ${socket.id}`);
 
@@ -60,7 +64,7 @@ io.on('connection', (socket) => {
   players[socket.id] = {
     x: 50,
     y: 50,
-    width: 30,
+    width: 20,
     height: 30,
     vx: 0,
     vy: 0,
@@ -84,6 +88,7 @@ io.on('connection', (socket) => {
     enemies: cloneEnemies(getEnemiesLevel()),
     backgroundLevel: getBackgroundLevel(),
     floorBackground: getFloorBackground(),
+    debug: DEBUG
   });
 
   socket.on('playerInput', (inputs) => {
