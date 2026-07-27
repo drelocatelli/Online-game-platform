@@ -1,10 +1,11 @@
 module.exports = {
     worldWidth: 2400,
     backgroundLevel: '/sprites/backgrounds/background1.png',
-    floorBackground: '/sprites/scenary/floor2.png',
+    floorBackground: '/sprites/scenary/floor.png',
     backgroundItems: [
-      { type: 'tree', x: 200, y: 342, w: 110, h: 200, background: '/sprites/scenary/tree.gif' },
-      { type: 'tree', x: 400, y: 342, w: 110, h: 200, background: '/sprites/scenary/tree.gif' },
+      { type: 'coconut_tree', x: 150, y: 350, w: 110, h: 200, background: '/sprites/scenary/coconut_tree.gif' },
+      { type: 'coconut_tree', x: 300, y: 350, w: 110, h: 200, background: '/sprites/scenary/coconut_tree.gif' },
+      { type: 'bush', x: 400, y: 450, w: 100, h: 90, background: '/sprites/scenary/bush.gif' },
     ],
     enemies: [
       {
@@ -23,6 +24,7 @@ module.exports = {
     ],
     platforms: [
       { x: 0, y: 530, w: 1000, h: 70, color: '#e94560', debug: false },
+      // { x: 720, y: 399, w: 500, h: 30, color: '#e94560', debug: false },
       
     ],
 }

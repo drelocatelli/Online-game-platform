@@ -205,9 +205,14 @@
   // --- RASTREAMENTO DO MOUSE ---
   canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
-    // Posição do mouse relativa ao Canvas (Tela)
-    mouse.x = Math.round(e.clientX - rect.left);
-    mouse.y = Math.round(e.clientY - rect.top);
+    
+    // Proporção do tamanho nativo (800x600) em relação ao tamanho exibido na tela
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    // Calcula a posição EXATA dentro da resolução 800x600 do jogo
+    mouse.x = Math.round((e.clientX - rect.left) * scaleX);
+    mouse.y = Math.round((e.clientY - rect.top) * scaleY);
   });
 
   // --- EVENTOS SOCKET.IO ---
