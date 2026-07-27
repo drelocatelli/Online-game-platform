@@ -15,7 +15,7 @@ const {
   getItemsLevel,
 } = require('./levels.js');
 
-const DEBUG = false;
+const DEBUG = true;
 const SAVE_FILE = path.join(__dirname, 'saves', 'player_saves.json');
 
 const app = express();
@@ -29,7 +29,7 @@ const CANVAS_HEIGHT = 600;
 const GRAVITY = 0.6;
 const FRICTION = 0.8;
 const MOVE_SPEED = 5;
-const JUMP_FORCE = -12;
+const JUMP_FORCE = -14;
 const ENEMY_SPEED = 1.6;
 const PLAYER_SPAWN = { x: 50, y: 50 };
 

@@ -24,13 +24,13 @@ module.exports = {
       },
     ],
     items: [
-      { id: 'coin-3', type: 'coin', x: 610, y: 320, w: 60, h: 40, background: '/sprites/coins.png' },
-      { id: 'coin-3', type: 'coin', x: 610, y: 489, w: 60, h: 40, background: '/sprites/coins.png' },
-      { id: 'speed_boost-3', type: 'speed_boost', x: 610, y: 489, w: 60, h: 40, background: '/sprites/coins.png' },
+      { id: 'coin-1', type: 'coin', x: 610, y: 290, w: 60, h: 40, background: '/sprites/coins.png' },
+      // { id: 'speed_boost-1', type: 'speed_boost', x: 610, y: 489, w: 60, h: 40, background: '/sprites/coins.png' },
     ],
     platforms: [
       { x: -10, y: 536, w: 1020, h: 70, background: '/sprites/scenary/floor.png', debug: false },
-      { x: 597, y: 348, w: 170, h: 70, background: '/sprites/scenary/floor2.png', debug: false },
+      { x: 597, y: 313, w: 170, h: 70, background: '/sprites/scenary/floor2.png', debug: false },
+      { x: 900, y: 467, w: 80, h: 70, background: '/sprites/scenary/floor2.png', debug: false },
       
     ],
 }
