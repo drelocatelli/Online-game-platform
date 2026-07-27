@@ -5,13 +5,13 @@ module.exports = {
     backgroundItems: [
       { type: 'coconut_tree', x: 150, y: 350, w: 110, h: 200, background: '/sprites/scenary/coconut_tree.gif' },
       { type: 'coconut_tree', x: 300, y: 350, w: 110, h: 200, background: '/sprites/scenary/coconut_tree.gif' },
-      { type: 'bush', x: 400, y: 450, w: 100, h: 90, background: '/sprites/scenary/bush.gif' },
+      { type: 'bush', x: 400, y: 452, w: 100, h: 90, background: '/sprites/scenary/bush.gif' },
     ],
     enemies: [
       {
         id: 'enemy-1',
         x: 700,
-        y: 486,
+        y: 489,
         width: 50,
         height: 43,
         background: '/sprites/enemy.gif',
@@ -23,8 +23,8 @@ module.exports = {
       },
     ],
     platforms: [
-      { x: 0, y: 530, w: 1000, h: 70, color: '#e94560', debug: false },
-      // { x: 720, y: 399, w: 500, h: 30, color: '#e94560', debug: false },
+      { x: -10, y: 536, w: 1020, h: 70, background: '/sprites/scenary/floor.png', debug: false },
+      { x: 720, y: 399, w: 500, h: 70, background: '/sprites/scenary/floor2.png', debug: false },
       
     ],
 }

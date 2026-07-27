@@ -205,7 +205,7 @@
   // --- RASTREAMENTO DO MOUSE ---
   canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
-    
+
     // Proporção do tamanho nativo (800x600) em relação ao tamanho exibido na tela
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -341,7 +341,7 @@
     // Se for GIF animado e já carregou o 1º frame
     if (sprite.isGif && sprite.isLoaded) {
       ctx.drawImage(sprite.canvas, item.x, item.y, item.w, item.h);
-    } 
+    }
     // Se for Imagem Estática (PNG/JPG) e já terminou de baixar
     else if (!sprite.isGif && sprite.image.complete) {
       ctx.drawImage(sprite.image, item.x, item.y, item.w, item.h);
@@ -381,37 +381,61 @@
   }
 
   function drawPlatformSprite(plat) {
-    const textureSource = floorBackground || '/sprites/scenary/floor2.png'; //[cite: 1]
-    const textureImage = getBackgroundImage(textureSource); //[cite: 1]
+    // 1. Define o raio das bordas (padrão 12px, ou customizado via JSON)
+    const borderRadius = plat.borderRadius !== undefined ? plat.borderRadius : 12;
 
-    if (textureImage && textureImage.complete && textureImage.naturalWidth > 0) {
-      //[cite: 1]
-      ctx.save(); //[cite: 1]
+    // 2. Busca a textura/imagem
+    const textureSource = plat.background || floorBackground || '/sprites/scenary/floor1.png';
+    const sprite = getSprite(textureSource);
 
-      // Recorta a área da plataforma
-      ctx.beginPath(); //[cite: 1]
-      ctx.rect(plat.x, plat.y, plat.w, plat.h); //[cite: 1]
-      ctx.clip(); //[cite: 1]
+    ctx.save();
 
-      // Redimensiona o tile para a altura exata da plataforma (plat.h)
-      const scale = plat.h / textureImage.naturalHeight; //[cite: 1]
-      const tileW = textureImage.naturalWidth * scale; // Largura proporcional[cite: 1]
-      const tileH = plat.h; // Altura ajustada[cite: 1]
-
-      // Repete a imagem ajustada ao longo da plataforma
-      for (let x = plat.x; x < plat.x + plat.w; x += tileW) {
-        //[cite: 1]
-        ctx.drawImage(textureImage, x, plat.y, tileW, tileH); //[cite: 1]
-      }
-
-      ctx.restore(); //[cite: 1]
+    // --- MÁSCARA COM TODAS AS BORDAS ARREDONDADAS ---
+    ctx.beginPath();
+    if (ctx.roundRect) {
+      // Método nativo moderno para 4 bordas arredondadas
+      ctx.roundRect(plat.x, plat.y, plat.w, plat.h, borderRadius);
     } else {
-      // Fallback enquanto carrega
-      ctx.fillStyle = plat.color || '#e94560'; //[cite: 1]
-      ctx.fillRect(plat.x, plat.y, plat.w, plat.h); //[cite: 1]
+      // Fallback manual para navegadores mais antigos
+      ctx.moveTo(plat.x + borderRadius, plat.y);
+      ctx.arcTo(plat.x + plat.w, plat.y, plat.x + plat.w, plat.y + plat.h, borderRadius);
+      ctx.arcTo(plat.x + plat.w, plat.y + plat.h, plat.x, plat.y + plat.h, borderRadius);
+      ctx.arcTo(plat.x, plat.y + plat.h, plat.x, plat.y, borderRadius);
+      ctx.arcTo(plat.x, plat.y, plat.x + plat.w, plat.y, borderRadius);
+    }
+    ctx.closePath();
+
+    // Recorta o canvas no formato totalmente arredondado
+    ctx.clip();
+
+    // --- DESENHO DA TEXTURA ---
+    if (sprite) {
+      if (sprite.isGif && sprite.isLoaded) {
+        const tileW = sprite.canvas.width;
+        for (let x = plat.x; x < plat.x + plat.w; x += tileW) {
+          ctx.drawImage(sprite.canvas, x, plat.y, tileW, plat.h);
+        }
+      } else if (!sprite.isGif && sprite.image.complete && sprite.image.naturalWidth > 0) {
+        const img = sprite.image;
+        const scale = plat.h / img.naturalHeight;
+        const tileW = img.naturalWidth * scale;
+        const tileH = plat.h;
+
+        for (let x = plat.x; x < plat.x + plat.w; x += tileW) {
+          ctx.drawImage(img, x, plat.y, tileW, tileH);
+        }
+      } else {
+        ctx.fillStyle = plat.color || '#e94560';
+        ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+      }
+    } else {
+      ctx.fillStyle = plat.color || '#e94560';
+      ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
     }
 
-    // --- BORDA VERMELHA ---
+    ctx.restore();
+
+    // --- BORDA DE DEBUG ---
     if (plat.debug || debug) {
       ctx.save();
       ctx.strokeStyle = 'red';
