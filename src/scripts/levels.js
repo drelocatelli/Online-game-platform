@@ -33,6 +33,10 @@ function setLevel(levelNumber) {
   return false;
 }
 
+function getItemsLevel() {
+  return (levels[currentLevel] || levels[1]).items || [];
+}
+
 function getBackgroundLevel() {
   return (levels[currentLevel] || levels[1]).backgroundLevel || '#1d3557';
 }
@@ -51,4 +55,5 @@ module.exports = {
   setLevel,
   getCurrentLevel: () => currentLevel,
   getBackgroundLevel,
+  getItemsLevel,
 };

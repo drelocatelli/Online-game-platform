@@ -10,9 +10,28 @@
   canvas {
     background: transparent;
   }
+
+  #game {
+    position: relative;
+    overflow: hidden;
+    width: max-content;
+  }
+
+  #score-board {
+    position: absolute;
+    font-size: 24px;
+    color: #000;
+    right: 15px;
+    top: 15px;
+    text-shadow: 0px 1px 1px #fff, 0px -1px 3px #fff;
+  }
 </style>
 
-<canvas id="gameCanvas" width="800" height="600"></canvas>
+<div id="game">
+  <div id="score-board">$<span id="score-val">0</span></div>
+
+  <canvas id="gameCanvas" width="800" height="600"></canvas>
+</div>
 
 <!-- SDK do Socket.IO servido automaticamente pelo Node.js -->
 <script src="/socket.io/socket.io.js"></script>
@@ -54,6 +73,7 @@
   let myId = null;
   let players = {};
   let enemies = [];
+  let items = [];
   let backgroundItems = [];
   let platforms = [];
   let worldWidth = 800;
@@ -224,14 +244,26 @@
     currentLevel = data.level || currentLevel;
     backgroundItems = data.backgroundItems || [];
     enemies = data.enemies || [];
+    items = data.items || [];
     backgroundLevel = data.backgroundLevel || backgroundLevel;
     floorBackground = data.floorBackground || floorBackground;
-    debug: data.debug || false;
+    debug = data.debug || false;
   });
 
   socket.on('state', (serverState) => {
     players = serverState.players || serverState;
+
+    // Atualiza a pontuação do jogador local no HTML
+    if (myId && players[myId]) {
+      const myScore = players[myId].score || 0;
+      const scoreElement = document.getElementById('score-val');
+      if (scoreElement) {
+        scoreElement.innerText = myScore;
+      }
+    }
+
     enemies = serverState.enemies || [];
+    items = serverState.items || [];
     render();
   });
 
@@ -241,6 +273,7 @@
     currentLevel = data.level || currentLevel;
     backgroundItems = data.backgroundItems || [];
     enemies = data.enemies || [];
+    items = data.items || [];
     backgroundLevel = data.backgroundLevel || backgroundLevel;
     floorBackground = data.floorBackground || floorBackground;
     render();
@@ -256,6 +289,54 @@
     }
 
     return spriteImages.idle;
+  }
+
+  function drawCollectibleItem(item) {
+    const x = item.x ?? 0;
+    const y = item.y ?? 0;
+    const w = item.w ?? item.width ?? 30;
+    const h = item.h ?? item.height ?? 30;
+
+    const imagePath = item.background || item.sprite || item.image || '/sprites/coin.gif';
+    const sprite = getSprite(imagePath);
+
+    let drawn = false;
+
+    if (sprite) {
+      if (sprite.isGif && sprite.isLoaded) {
+        ctx.drawImage(sprite.canvas, x, y, w, h);
+        drawn = true;
+      } else if (!sprite.isGif && sprite.image.complete && sprite.image.naturalWidth > 0) {
+        ctx.drawImage(sprite.image, x, y, w, h);
+        drawn = true;
+      }
+    }
+
+    // Se a imagem/GIF ainda não carregou, desenha um círculo amarelo para garantir visibilidade
+    if (!drawn) {
+      ctx.save();
+      ctx.fillStyle = '#FFD700';
+      ctx.beginPath();
+      ctx.arc(x + w / 2, y + h / 2, Math.min(w, h) / 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#B8860B';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+    }
+  }
+
+  function drawBackgroundItem(item) {
+    const itemBackground = item.background || '/sprites/scenary/tree.png';
+    const sprite = getSprite(itemBackground);
+
+    if (!sprite) return;
+
+    if (sprite.isGif && sprite.isLoaded) {
+      ctx.drawImage(sprite.canvas, item.x, item.y, item.w || item.width, item.h || item.height);
+    } else if (!sprite.isGif && sprite.image.complete) {
+      ctx.drawImage(sprite.image, item.x, item.y, item.w || item.width, item.h || item.height);
+    }
   }
 
   function drawPlayerSprite(player) {
@@ -506,6 +587,13 @@
     enemies.forEach((enemy) => {
       drawEnemySprite(enemy);
     });
+
+    //  Renderiza os Itens Coletáveis
+    if (Array.isArray(items)) {
+      items.forEach((item) => {
+        drawCollectibleItem(item);
+      });
+    }
 
     // Desenhar Jogadores
     for (let id in players) {

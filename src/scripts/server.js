@@ -12,9 +12,10 @@ const {
   getBackgroundLevel,
   getFloorBackground,
   getEnemiesLevel,
+  getItemsLevel,
 } = require('./levels.js');
 
-const DEBUG = true;
+const DEBUG = false;
 const SAVE_FILE = path.join(__dirname, 'saves', 'player_saves.json');
 
 const app = express();
@@ -34,11 +35,16 @@ const PLAYER_SPAWN = { x: 50, y: 50 };
 
 const players = {};
 const enemies = [];
+const items = [];
 const colors = ['#ff4d4d', '#4da6ff', '#4dff88', '#ffea4d', '#ff4dff'];
 const outfitHues = [0, 40, 80, 140, 200, 260, 320];
 
 function cloneEnemies(levelEnemies) {
   return (levelEnemies || []).map((enemy) => ({ ...enemy }));
+}
+
+function cloneItems(levelItems) {
+  return (levelItems || []).map((item) => ({ ...item }));
 }
 
 function loadSaves() {
@@ -125,6 +131,10 @@ io.on('connection', (socket) => {
   enemies.length = 0;
   enemies.push(...cloneEnemies(getEnemiesLevel()));
 
+  if (items.length === 0) {
+    items.push(...cloneItems(getItemsLevel()));
+  }
+
   socket.emit('init', {
     id: socket.id,
     platforms: getPlatforms(),
@@ -134,6 +144,7 @@ io.on('connection', (socket) => {
     enemies: cloneEnemies(getEnemiesLevel()),
     backgroundLevel: getBackgroundLevel(),
     floorBackground: getFloorBackground(),
+    items: cloneItems(getItemsLevel()),
     debug: DEBUG
   });
 
@@ -240,9 +251,37 @@ setInterval(() => {
         break;
       }
     }
+
+  //Colisão com Itens (com suporte a múltiplos tipos)
+    for (let i = items.length - 1; i >= 0; i--) {
+      const item = items[i];
+
+      if (checkCollision(p, item)) {
+        // Checa qual o tipo do item
+        switch (item.type) {
+          case 'coin':
+            p.score = (p.score || 0) + (item.value || 1); // Soma os pontos (padrão 1)
+            break;
+
+          case 'speed_boost':
+            // Exemplo futuro: aumenta velocidade temporariamente
+            p.speed = 8; 
+            break;
+
+
+          default:
+            // Caso seja um item genérico de ponto
+            p.score = (p.score || 0) + 1;
+            break;
+        }
+
+        // Remove o item coletado do mapa
+        items.splice(i, 1);
+      }
+    }
   }
 
-  io.emit('state', { players, enemies });
+  io.emit('state', { players, enemies, items });
 }, 1000 / 60);
 
 function resetPlayerToSpawn(player) {
@@ -292,6 +331,20 @@ function handleCollision(player, isHorizontal, platforms) {
       }
     }
   }
+}
+
+function checkCollision(rect1, rect2) {
+  const r1W = rect1.w || rect1.width || 30;
+  const r1H = rect1.h || rect1.height || 30;
+  const r2W = rect2.w || rect2.width || 30;
+  const r2H = rect2.h || rect2.height || 30;
+
+  return (
+    rect1.x < rect2.x + r2W &&
+    rect1.x + r1W > rect2.x &&
+    rect1.y < rect2.y + r2H &&
+    rect1.y + r1H > rect2.y
+  );
 }
 
 const PORT = process.env.PORT || 3000;
