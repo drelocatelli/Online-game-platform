@@ -1,3 +1,6 @@
+const initialY = 82;
+const gap = 50;
+
 module.exports = {
     worldWidth: 2400,
     backgroundLevel: '/sprites/backgrounds/background1.png',
@@ -9,6 +12,8 @@ module.exports = {
       { type: 'cascate', x: 900, y: 535, w: 370, h: 80, background: '/sprites/scenary/cascate-sprite.png', frames: 12, frameSpeed: 3 },
 
       { type: 'bush', x: 1302, y: 452, w: 100, h: 90, background: '/sprites/scenary/bush.gif' },
+
+      { type: 'cascate', x: 1660, y: 540, w: 370, h: 80, background: '/sprites/scenary/cascate-sprite.png', frames: 12, frameSpeed: 3 },
 
     ],
     enemies: [
@@ -42,6 +47,13 @@ module.exports = {
     items: [
       { id: 'coin-1', type: 'coin', x: 606, y: 273, w: 40, h: 40, background: '/sprites/items/coins.gif' },
       { id: 'gun-1', type: 'gun', x: 1908, y: 172, w: 40, h: 40, background: '/sprites/items/gun.png' },
+
+      { id: 'coin-2', type: 'coin', x: 2009, y: initialY, w: 40, h: 40, background: '/sprites/items/coins.gif' },
+      { id: 'coin-3', type: 'coin', x: 2009, y: initialY + gap, w: 40, h: 40, background: '/sprites/items/coins.gif' },
+      { id: 'coin-4', type: 'coin', x: 2009, y: initialY + (gap * 2), w: 40, h: 40, background: '/sprites/items/coins.gif' },
+      { id: 'coin-5', type: 'coin', x: 2009, y: initialY + (gap * 3), w: 40, h: 40, background: '/sprites/items/coins.gif' },
+      { id: 'coin-6', type: 'coin', x: 2009, y: initialY + (gap * 4), w: 40, h: 40, background: '/sprites/items/coins.gif' },
+      { id: 'coin-7', type: 'coin', x: 2009, y: initialY + (gap * 5), w: 40, h: 40, background: '/sprites/items/coins.gif' },
       // { id: 'speed_boost-1', type: 'speed_boost', x: 610, y: 489, w: 60, h: 40, background: '/sprites/coins.png' },
     ],
     platforms: [
@@ -53,6 +65,9 @@ module.exports = {
       { x: 1449, y: 360, w: 80, h: 70, background: '/sprites/scenary/floor2.png', debug: false },
       { x: 1529, y: 360, w: 80, h: 70, background: '/sprites/scenary/floor2.png', debug: false },
       { x: 1666, y: 218, w: 300, h: 70, background: '/sprites/scenary/floor2.png', debug: false },
+
+      { x: 1970, y: 540, w: 800, h: 70, background: '/sprites/scenary/floor.png', debug: false },
+
       
     ],
 }
