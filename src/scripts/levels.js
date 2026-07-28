@@ -22,7 +22,7 @@ function getBackgroundItems() {
 }
 
 function getFloorBackground() {
-  return (levels[currentLevel] || levels[1]).floorBackground || '/sprites/scenary/floor1.png';
+  return (levels[currentLevel] || levels[1]).floorBackground || '/sprites/scenary/floor.png';
 }
 
 function setLevel(levelNumber) {

@@ -1,7 +1,7 @@
 module.exports = {
      worldWidth: 2000,
     backgroundLevel: '#f4a261',
-    floorBackground: '/sprites/scenary/floor1.png',
+    floorBackground: '/sprites/scenary/floor.png',
     backgroundItems: [
       { type: 'tree', x: 180, y: 360, w: 110, h: 140, background: '/sprites/scenary/tree.png' },
       { type: 'tree', x: 980, y: 240, w: 110, h: 150, background: '/sprites/scenary/tree.png' },

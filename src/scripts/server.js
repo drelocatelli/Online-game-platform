@@ -15,7 +15,7 @@ const {
   getItemsLevel,
 } = require('./levels.js');
 
-const DEBUG = false;
+const DEBUG = true;
 const SAVE_FILE = path.join(__dirname, 'saves', 'player_saves.json');
 
 const app = express();

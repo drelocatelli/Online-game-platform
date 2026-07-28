@@ -20,10 +20,10 @@
   #score-board {
     position: absolute;
     font-size: 24px;
-    color: #000;
+    color: #fff;
     right: 15px;
     top: 15px;
-    text-shadow: 0px 1px 1px #fff, 0px -1px 3px #fff;
+    text-shadow: 0px 1px 1px #000, 0px -1px 1px #000, 1px 0px 1px #000, -1px 0px 1px #000;
   }
 </style>
 
@@ -68,7 +68,7 @@
   spriteImages.jump.src = '/sprites/jump.png';
   spriteImages.enemy.src = '/sprites/enemy.gif';
   spriteImages.tree.src = '/sprites/scenary/tree.png';
-  spriteImages.floor.src = '/sprites/scenary/floor1.png';
+  spriteImages.floor.src = '/sprites/scenary/floor.png';
 
   let myId = null;
   let players = {};
@@ -123,34 +123,39 @@
   }
 
   function getGif(url) {
-    if (!url) return null;
+  if (!url) return null;
 
-    // Se já existe no cache, retorna o objeto com o canvas e status
-    if (gifCache[url]) {
-      return gifCache[url];
-    }
+  if (gifCache[url]) {
+    return gifCache[url];
+  }
 
-    // Se não existe, cria a estrutura e salva no cache
-    const gifCanvas = document.createElement('canvas');
-    const gifData = {
-      canvas: gifCanvas,
-      isLoaded: false,
-    };
+  const gifCanvas = document.createElement('canvas');
+  const gifData = {
+    canvas: gifCanvas,
+    isLoaded: false,
+  };
 
-    gifCache[url] = gifData;
+  gifCache[url] = gifData;
 
-    // Inicia o carregamento com a Gifler
+  try {
     gifler(url).frames(gifCanvas, (gifCtx, frame) => {
-      gifCtx.canvas.width = frame.width;
-      gifCtx.canvas.height = frame.height;
+      // AJUSTE CRÍTICO: Define o tamanho do canvas APENAS no primeiro frame!
+      // Redimensionar o canvas a cada frame faz o navegador travar em GIFs grandes.
+      if (gifCtx.canvas.width !== frame.width) {
+        gifCtx.canvas.width = frame.width;
+        gifCtx.canvas.height = frame.height;
+      }
+
       gifCtx.globalCompositeOperation = 'source-over';
       gifCtx.drawImage(frame.buffer, frame.x, frame.y, frame.width, frame.height);
-
-      gifData.isLoaded = true; // Marca como carregado assim que o 1º frame chega
+      gifData.isLoaded = true;
     });
-
-    return gifData;
+  } catch (e) {
+    console.error('Erro ao carregar GIF:', url, e);
   }
+
+  return gifData;
+}
 
   // Função auxiliar que cria o canvas e gerencia o GIF
   function loadGif(url) {
@@ -466,7 +471,7 @@
     const borderRadius = plat.borderRadius !== undefined ? plat.borderRadius : 12;
 
     // 2. Busca a textura/imagem
-    const textureSource = plat.background || floorBackground || '/sprites/scenary/floor1.png';
+    const textureSource = plat.background || floorBackground || '/sprites/scenary/floor.png';
     const sprite = getSprite(textureSource);
 
     ctx.save();
