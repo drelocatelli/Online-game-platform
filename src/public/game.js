@@ -12,6 +12,9 @@
   let isWalkGifLoaded = false;
   let isEnemyGifLoaded = false;
 
+  let lastShotTime = 0; // Armazena o carimbo de data/hora do último disparo
+  const SHOT_ANIMATION_DURATION = 250; // Duração do sprite com a arma (em milissegundos)
+
   const spriteImages = {
     idle: new Image(),
     walk: new Image(),
@@ -150,9 +153,10 @@
   }
 
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'j' || e.key === 'J' || e.key === 'k' || e.key === 'K') {
+    if (e.key === 'e' || e.key === 'E') {
       if (myId && players[myId] && players[myId].hasGun) {
         socket.emit('shot'); // Emite o tiro pro servidor
+        lastShotTime = Date.now();
       }
     }
 
@@ -267,7 +271,10 @@
   });
 
   function getPlayerSprite(player) {
-    if (player.hasGun) {
+    const isLocalPlayer = player.id === myId;
+    const now = Date.now();
+    
+    if (player.hasGun && (now - lastShotTime < SHOT_ANIMATION_DURATION)) {
       return spriteImages.player_with_gun;
     }
 
@@ -644,7 +651,7 @@
         // Pequeno brilho na bolha
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(b.x + b.w * 0.3, b.y + b.h * 0.3, b.w * 0.1, 0, Math.PI * 2);
+        ctx.arc(b.x + b.w * 0.1, b.y + b.h * 0.1, b.w * 0.1, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
       });

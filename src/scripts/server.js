@@ -147,9 +147,9 @@ io.on('connection', (socket) => {
       id: Math.random().toString(),
       playerId: socket.id,
       x: direction === 1 ? player.x + player.width : player.x - 12,
-      y: player.y + 8, // Altura da arminha de bolhas
-      w: 12,
-      h: 12,
+      y: player.y - 6, // Altura da arminha de bolhas
+      w: 10,
+      h: 10,
       vx: direction * 7, // Velocidade horizontal da bolha
       life: 50 // Duração de 50 frames antes de estourar
     };
