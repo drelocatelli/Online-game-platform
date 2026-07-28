@@ -15,7 +15,7 @@ const {
   getItemsLevel,
 } = require('./levels.js');
 
-const DEBUG = true;
+const DEBUG = false;
 const SHOW_ROWS = false;
 
 const SAVE_FILE = path.join(__dirname, 'saves', 'player_saves.json');
@@ -39,6 +39,7 @@ const players = {};
 const enemies = [];
 const items = [];
 const bullets = [];
+let initialGuns = [];
 
 const colors = ['#ff4d4d', '#4da6ff', '#4dff88', '#ffea4d', '#ff4dff'];
 const outfitHues = [0, 40, 80, 140, 200, 260, 320];
@@ -342,6 +343,7 @@ setInterval(() => {
 
           case 'gun':
             p.hasGun = true; // Exemplo: ativa a arma para o jogador
+            p.equippedGunId = item.id;
             break;
 
           default:
@@ -401,6 +403,15 @@ function resetPlayerToSpawn(player) {
   player.vy = 0;
   player.grounded = false;
   player.inputs = { left: false, right: false, up: false };
+  player.hasGun = false
+  resetItems()
+}
+
+function resetItems() {
+  items.length = 0;
+  items.push(...cloneItems(getItemsLevel()));
+
+  initialGuns = items.filter(el => el.type === 'gun' || el.gun).map(gun => ({ ...gun }));
 }
 
 function rectsIntersect(a, b) {
