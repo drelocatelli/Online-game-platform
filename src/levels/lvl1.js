@@ -6,6 +6,7 @@ module.exports = {
       { type: 'coconut_tree', x: 150, y: 360, w: 110, h: 200, background: '/sprites/scenary/coconut_tree.gif' },
       { type: 'coconut_tree', x: 266, y: 360, w: 110, h: 200, background: '/sprites/scenary/coconut_tree.gif' },
       { type: 'bush', x: 400, y: 452, w: 100, h: 90, background: '/sprites/scenary/bush.gif' },
+      { type: 'cascate', x: 900, y: 535, w: 370, h: 80, background: '/sprites/scenary/cascate-sprite.png', frames: 12, frameSpeed: 3 },
 
     ],
     enemies: [
@@ -28,11 +29,10 @@ module.exports = {
       // { id: 'speed_boost-1', type: 'speed_boost', x: 610, y: 489, w: 60, h: 40, background: '/sprites/coins.png' },
     ],
     platforms: [
-      // { x: -10, y: 536, w: 1020, h: 70, background: '/sprites/transparent.png', debug: false },
-
       { x: -10, y: 536, w: 1020, h: 70, background: '/sprites/scenary/floor.png', debug: false },
       { x: 597, y: 313, w: 170, h: 70, background: '/sprites/scenary/floor2.png', debug: false },
       { x: 900, y: 467, w: 80, h: 70, background: '/sprites/scenary/floor2.png', debug: false },
+      { x: 1222, y: 536, w: 500, h: 70, background: '/sprites/scenary/floor.png', debug: false },
       
     ],
 }

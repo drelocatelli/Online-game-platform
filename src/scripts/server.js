@@ -16,6 +16,8 @@ const {
 } = require('./levels.js');
 
 const DEBUG = true;
+const SHOW_ROWS = false;
+
 const SAVE_FILE = path.join(__dirname, 'saves', 'player_saves.json');
 
 const app = express();
@@ -145,7 +147,8 @@ io.on('connection', (socket) => {
     backgroundLevel: getBackgroundLevel(),
     floorBackground: getFloorBackground(),
     items: cloneItems(getItemsLevel()),
-    debug: DEBUG
+    debug: DEBUG,
+    showRows: SHOW_ROWS
   });
 
   socket.on('playerInput', (inputs) => {
