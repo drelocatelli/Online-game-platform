@@ -140,6 +140,8 @@ io.on('connection', (socket) => {
     const player = players[socket.id];
     if (!player || !player.hasGun) return;
 
+    player.lastShotTime = Date.now();
+
     // Descobre a direção com base no lado que o player está olhando
     const direction = player.facing === 'left' ? -1 : 1;
 
@@ -156,6 +158,8 @@ io.on('connection', (socket) => {
     };
 
     bullets.push(bullet);
+
+    io.emit('playerShot', socket.id);
   });
 
   enemies.length = 0;

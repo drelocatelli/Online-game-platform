@@ -258,6 +258,12 @@
     render();
   });
 
+  socket.on('playerShot', (playerId) => {
+    if (players[playerId]) {
+      players[playerId].lastShotTime = Date.now();
+    }
+  });
+
   socket.on('levelChanged', (data) => {
     platforms = data.platforms;
     worldWidth = data.worldWidth;
@@ -274,9 +280,9 @@
     const isLocalPlayer = player.id === myId;
     const now = Date.now();
     
-    if (player.hasGun && (now - lastShotTime < SHOT_ANIMATION_DURATION)) {
-      return spriteImages.player_with_gun;
-    }
+    if (player.hasGun && player.lastShotTime && (now - player.lastShotTime < SHOT_ANIMATION_DURATION)) {
+    return spriteImages.player_with_gun;
+  }
 
     if (!player.grounded && player.vy < 0) {
       return spriteImages.jump;
@@ -328,11 +334,6 @@
     }
   }
 
-  function makeGun(ctx, item) {
-    
-    
-  }
-  
   function getSpriteImage(src) {
     if (!src) return null;
     if (!imageCache[src]) {
