@@ -257,7 +257,7 @@ setInterval(() => {
 
       if (checkCollision(b, enemy)) {
         if (players[b.playerId]) {
-          players[b.playerId].score = (players[b.playerId].score || 0) + 10;
+          // players[b.playerId].score = (players[b.playerId].score || 0) + 10;
         }
 
         enemies.splice(j, 1);
