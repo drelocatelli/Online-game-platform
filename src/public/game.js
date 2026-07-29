@@ -281,16 +281,19 @@
   });
 
   socket.on('levelChanged', (data) => {
-    platforms = data.platforms;
-    worldWidth = data.worldWidth;
-    currentLevel = data.level || currentLevel;
-    backgroundItems = data.backgroundItems || [];
-    enemies = data.enemies || [];
-    items = data.items || [];
-    backgroundLevel = data.backgroundLevel || backgroundLevel;
-    floorBackground = data.floorBackground || floorBackground;
+    const levelData = data.levelData || {};
+
+    platforms = levelData.platforms || [];
+    worldWidth = levelData.worldWidth || worldWidth;
+    currentLevel = data.levelNumber || currentLevel;
+    backgroundItems = levelData.backgroundItems || [];
+    enemies = levelData.enemies || [];
+    items = levelData.items || [];
+    backgroundLevel = levelData.backgroundLevel || backgroundLevel;
+    floorBackground = levelData.floorBackground || floorBackground;
+
     render();
-  });
+});
 
   function getPlayerSprite(player) {
     const isLocalPlayer = player.id === myId;

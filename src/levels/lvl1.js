@@ -2,7 +2,7 @@ const initialY = 82;
 const gap = 50;
 
 module.exports = {
-    worldWidth: 2400,
+    worldWidth: 5000,
     backgroundLevel: '/sprites/backgrounds/background1.png',
     floorBackground: '/sprites/scenary/floor.png',
     backgroundItems: [
@@ -54,6 +54,8 @@ module.exports = {
       { id: 'coin-5', type: 'coin', x: 2009, y: initialY + (gap * 3), w: 40, h: 40, background: '/sprites/items/coins.gif' },
       { id: 'coin-6', type: 'coin', x: 2009, y: initialY + (gap * 4), w: 40, h: 40, background: '/sprites/items/coins.gif' },
       { id: 'coin-7', type: 'coin', x: 2009, y: initialY + (gap * 5), w: 40, h: 40, background: '/sprites/items/coins.gif' },
+
+      { id: 'door-1', type: 'door', x: 2606, y: 392, w: 150, h: 150, background: '/sprites/door.png' },
       // { id: 'speed_boost-1', type: 'speed_boost', x: 610, y: 489, w: 60, h: 40, background: '/sprites/coins.png' },
     ],
     platforms: [

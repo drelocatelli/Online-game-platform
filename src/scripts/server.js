@@ -8,14 +8,14 @@ const {
   getWorldWidth,
   getBackgroundItems,
   getCurrentLevel,
-  setLevel,
   getBackgroundLevel,
   getFloorBackground,
   getEnemiesLevel,
   getItemsLevel,
+  levels,
 } = require('./levels.js');
 
-const DEBUG = false;
+const DEBUG = true;
 const SHOW_ROWS = false;
 
 const SAVE_FILE = path.join(__dirname, 'saves', 'player_saves.json');
@@ -67,10 +67,10 @@ function loadSaves() {
   }
 }
 
-function savePlayerPosition(socketId, x, y) {
+function savePlayerPosition(socketId, x, y, currentLevel = 1) {
   try {
     const saves = loadSaves();
-    saves[socketId] = { x, y };
+    saves[socketId] = { x, y, currentLevel };
 
     // Garante que o diretório existe
     const dir = path.dirname(SAVE_FILE);
@@ -107,23 +107,25 @@ app.get('/game', (req, res) => {
 
 io.on('connection', (socket) => {
   console.log(`Jogador conectado: ${socket.id}`);
-
   const playerId = DEBUG ? 'player1' : socket.id;
-  let savedPos = PLAYER_SPAWN;
+
+  let savedData = { x: PLAYER_SPAWN.x, y: PLAYER_SPAWN.y, currentLevel: 1 };
   if (DEBUG) {
     const saves = loadSaves();
-    savedPos = saves[playerId] || PLAYER_SPAWN;
+
+    savedData = saves[playerId] || savedData;
   }
-  const color = colors[Object.keys(players).length % colors.length];
   
+  const color = colors[Object.keys(players).length % colors.length];
+  const targetLevel = savedData.currentLevel || 1;
   players[socket.id] = {
     id: playerId,
-    x: savedPos.x,
-    y: savedPos.y,
+    x: savedData.x,
+    y: savedData.y,
     width: 20,
     height: 30,
-    lastSafeX: savedPos.x, // Salva a última posição segura em X
-    lastSafeY: savedPos.y, // Salva a última posição segura em Y
+    lastSafeX: savedData.x, // Salva a última posição segura em X
+    lastSafeY: savedData.y, // Salva a última posição segura em Y
     vx: 0,
     vy: 0,
     color: color,
@@ -132,9 +134,12 @@ io.on('connection', (socket) => {
     score: 0,
     hasGun: false, // Começa sem arma
     collectedItems: [],
+    currentLevel: savedData.currentLevel || 1,
     outfitHue: pickUniqueOutfitHue(),
     inputs: { left: false, right: false, up: false }
   };
+
+  reloadLevelData(targetLevel);
 
   // --- EVENTO DE TIRO (DISPARADO PELO CLIENTE) ---
   socket.on('shot', () => {
@@ -174,13 +179,13 @@ io.on('connection', (socket) => {
 
   socket.emit('init', {
     id: socket.id,
-    platforms: getPlatforms(),
-    level: getCurrentLevel(),
-    worldWidth: getWorldWidth(),
-    backgroundItems: getBackgroundItems(),
-    enemies: cloneEnemies(getEnemiesLevel()),
-    backgroundLevel: getBackgroundLevel(),
-    floorBackground: getFloorBackground(),
+    platforms: levels[targetLevel]?.platforms || getPlatforms(),
+    level: targetLevel,
+    worldWidth: levels[targetLevel]?.worldWidth || getWorldWidth(),
+    backgroundItems: levels[targetLevel]?.backgroundItems || getBackgroundItems(),
+    enemies: cloneEnemies(levels[targetLevel]?.enemies || getEnemiesLevel()),
+    backgroundLevel: levels[targetLevel]?.backgroundLevel || getBackgroundLevel(),
+    floorBackground: levels[targetLevel]?.floorBackground || getFloorBackground(),
     items: initialVisibleItems,
     debug: DEBUG,
     showRows: SHOW_ROWS
@@ -192,31 +197,12 @@ io.on('connection', (socket) => {
     }
   });
 
-
-  socket.on('changeLevel', (newLevel) => {
-    if (setLevel(newLevel)) {
-      enemies.length = 0;
-      enemies.push(...cloneEnemies(getEnemiesLevel()));
-      bullets.length = 0; // Limpa projéteis ao mudar de fase
-
-      io.emit('levelChanged', {
-        level: getCurrentLevel(),
-        platforms: getPlatforms(),
-        worldWidth: getWorldWidth(),
-        backgroundItems: getBackgroundItems(),
-        enemies: cloneEnemies(getEnemiesLevel()),
-        backgroundLevel: getBackgroundLevel(),
-        floorBackground: getFloorBackground(),
-      });
-    }
-  });
-
   socket.on('disconnect', () => {
     console.log(`Jogador desconectado: ${socket.id}`);
     
     if (DEBUG && players[socket.id]) {
       // Salva a posição final usando o ID fixo ('player1')
-      savePlayerPosition(players[socket.id].id, players[socket.id].x, players[socket.id].y);
+      savePlayerPosition(players[socket.id].id, players[socket.id].x, players[socket.id].y, players[socket.id].currentLevel);
     }
 
     delete players[socket.id];
@@ -226,8 +212,6 @@ io.on('connection', (socket) => {
 enemies.push(...cloneEnemies(getEnemiesLevel()));
 
 setInterval(() => {
-  const currentPlatforms = getPlatforms();
-
   for (let enemy of enemies) {
     enemy.x += enemy.direction * enemy.speed;
 
@@ -280,6 +264,7 @@ setInterval(() => {
   
   for (let id in players) {
     const p = players[id];
+    const playerPlatforms = levels[p.currentLevel]?.platforms || getPlatforms();
 
 
     if (p.inputs.left) {
@@ -303,12 +288,12 @@ setInterval(() => {
 
 
     p.x += p.vx;
-    handleCollision(p, true, currentPlatforms);
+    handleCollision(p, true, playerPlatforms); 
 
 
     p.y += p.vy;
     p.grounded = false;
-    handleCollision(p, false, currentPlatforms);
+    handleCollision(p, false, playerPlatforms);
 
     if (p.grounded) {
       p.lastSafeX = p.x;
@@ -342,6 +327,13 @@ setInterval(() => {
       }
 
       if (checkCollision(p, item)) {
+
+        // se for uma porta
+        if(item.type === 'door') {
+          setLevel(id, p.currentLevel + 1);
+          break;
+        }
+        
 
         if (!p.collectedItems) p.collectedItems = [];
 
@@ -390,6 +382,44 @@ setInterval(() => {
   }
 }, 1000 / 60);
 
+function reloadLevelData(levelNum) {
+  if (levels && levels[levelNum]) {
+    enemies.length = 0;
+    enemies.push(...cloneEnemies(levels[levelNum].enemies || []));
+    items = cloneItems(levels[levelNum].items || []);
+  }
+}
+
+function setLevel(socketId, newLevel) {
+  const p = players[socketId];
+
+  if (p && levels && levels[newLevel]) {
+    p.currentLevel = newLevel;
+    p.collectedItems = [];
+
+    // Recarrega os inimigos e itens do servidor para a nova fase
+    reloadLevelData(newLevel);
+
+    const levelData = levels[newLevel];
+    p.x = levelData.spawnX || PLAYER_SPAWN.x;
+    p.y = levelData.spawnY || PLAYER_SPAWN.y;
+
+    if (DEBUG) {
+      savePlayerPosition(p.id, p.x, p.y, p.currentLevel);
+    }
+
+    io.to(socketId).emit('levelChanged', {
+      levelNumber: newLevel,
+      levelData
+    });
+
+    console.log(`Jogador ${socketId} (ID: ${p.id}) mudou para o Level ${newLevel}`);
+    return true;
+  }
+
+  return false;
+}
+
 if (DEBUG) {
   setInterval(() => {
     let changed = false;
@@ -397,11 +427,22 @@ if (DEBUG) {
     for (let id in players) {
       const p = players[id];
       const lastSave = saves[p.id];
-      if (!lastSave || Math.round(lastSave.x) !== Math.round(p.x) || Math.round(lastSave.y) !== Math.round(p.y)) {
-        saves[p.id] = { x: p.x, y: p.y };
+      
+      // Checa se mudou X, Y ou Nível
+      if (!lastSave || 
+          Math.round(lastSave.x) !== Math.round(p.x) || 
+          Math.round(lastSave.y) !== Math.round(p.y) ||
+          lastSave.currentLevel !== p.currentLevel) {
+            
+        saves[p.id] = { 
+          x: p.x, 
+          y: p.y, 
+          currentLevel: p.currentLevel || 1 // ✅ Preserva a propriedade do Nível
+        };
         changed = true;
       }
     }
+    
     if (changed) {
       try {
         const dir = path.dirname(SAVE_FILE);
@@ -423,8 +464,7 @@ function resetPlayerToSpawn(player) {
     player.x = player.lastSafeX;
     player.y = player.lastSafeY;
 
-    // Salva usando o id que está gravado no player
-    savePlayerPosition(player.id, player.x, player.y);
+    savePlayerPosition(player.id, player.x, player.y, player.currentLevel);
   } else {
     player.x = PLAYER_SPAWN.x;
     player.y = PLAYER_SPAWN.y;
@@ -434,15 +474,17 @@ function resetPlayerToSpawn(player) {
   player.vy = 0;
   player.grounded = false;
   player.inputs = { left: false, right: false, up: false };
-  player.hasGun = false
+  player.hasGun = false;
   player.collectedItems = [];
 }
 
-function resetItems() {
-  items.length = 0;
-  items.push(...cloneItems(getItemsLevel()));
-
-  initialGuns = items.filter(el => el.type === 'gun' || el.gun).map(gun => ({ ...gun }));
+function rectsIntersect(a, b) {
+  return (
+    a.x < b.x + b.width &&
+    a.x + a.width > b.x &&
+    a.y < b.y + b.height &&
+    a.y + a.height > b.y
+  );
 }
 
 function rectsIntersect(a, b) {

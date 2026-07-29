@@ -24,15 +24,6 @@ function getBackgroundItems() {
 function getFloorBackground() {
   return (levels[currentLevel] || levels[1]).floorBackground || '/sprites/scenary/floor.png';
 }
-
-function setLevel(levelNumber) {
-  if (levels[levelNumber]) {
-    currentLevel = levelNumber;
-    return true;
-  }
-  return false;
-}
-
 function getItemsLevel() {
   return (levels[currentLevel] || levels[1]).items || [];
 }
@@ -52,7 +43,6 @@ module.exports = {
   getBackgroundItems,
   getFloorBackground,
   getEnemiesLevel,
-  setLevel,
   getCurrentLevel: () => currentLevel,
   getBackgroundLevel,
   getItemsLevel,
