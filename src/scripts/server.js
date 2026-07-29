@@ -2,20 +2,18 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
-const fs  = require('fs')
+const fs = require('fs');
 const {
   getPlatforms,
   getWorldWidth,
   getBackgroundItems,
-  getCurrentLevel,
-  getBackgroundLevel,
   getFloorBackground,
   getEnemiesLevel,
   getItemsLevel,
   levels,
 } = require('./levels.js');
 
-const DEBUG = true;
+const DEBUG = false;
 const SHOW_ROWS = false;
 
 const SAVE_FILE = path.join(__dirname, 'saves', 'player_saves.json');
@@ -36,10 +34,35 @@ const ENEMY_SPEED = 1.6;
 const PLAYER_SPAWN = { x: 50, y: 50 };
 
 const players = {};
-const enemies = [];
-let items = cloneItems(getItemsLevel());
+let enemies = [];
+let items = [];
 const bullets = [];
-let initialGuns = [];
+
+function loadAllLevelsData() {
+  let allEnemies = [];
+  let allItems = [];
+
+  for (let levelNum in levels) {
+    const lvl = levels[levelNum];
+
+    if (lvl.enemies) {
+      lvl.enemies.forEach((e) => {
+        allEnemies.push({ ...e, level: Number(levelNum) });
+      });
+    }
+
+    if (lvl.items) {
+      lvl.items.forEach((i) => {
+        allItems.push({ ...i, level: Number(levelNum) });
+      });
+    }
+  }
+
+  enemies = allEnemies;
+  items = allItems;
+}
+
+loadAllLevelsData();
 
 const colors = ['#ff4d4d', '#4da6ff', '#4dff88', '#ffea4d', '#ff4dff'];
 const outfitHues = [0, 40, 80, 140, 200, 260, 320];
@@ -112,83 +135,69 @@ io.on('connection', (socket) => {
   let savedData = { x: PLAYER_SPAWN.x, y: PLAYER_SPAWN.y, currentLevel: 1 };
   if (DEBUG) {
     const saves = loadSaves();
-
     savedData = saves[playerId] || savedData;
   }
-  
+
   const color = colors[Object.keys(players).length % colors.length];
   const targetLevel = savedData.currentLevel || 1;
+
   players[socket.id] = {
     id: playerId,
     x: savedData.x,
     y: savedData.y,
     width: 20,
     height: 30,
-    lastSafeX: savedData.x, // Salva a última posição segura em X
-    lastSafeY: savedData.y, // Salva a última posição segura em Y
+    lastSafeX: savedData.x,
+    lastSafeY: savedData.y,
     vx: 0,
     vy: 0,
     color: color,
     grounded: false,
     facing: 'right',
     score: 0,
-    hasGun: false, // Começa sem arma
+    hasGun: false,
     collectedItems: [],
-    currentLevel: savedData.currentLevel || 1,
+    currentLevel: targetLevel,
     outfitHue: pickUniqueOutfitHue(),
-    inputs: { left: false, right: false, up: false }
+    inputs: { left: false, right: false, up: false },
   };
 
-  reloadLevelData(targetLevel);
-
-  // --- EVENTO DE TIRO (DISPARADO PELO CLIENTE) ---
-  socket.on('shot', () => {
-    const player = players[socket.id];
-    if (!player || !player.hasGun) return;
-
-    player.lastShotTime = Date.now();
-
-    // Descobre a direção com base no lado que o player está olhando
-    const direction = player.facing === 'left' ? -1 : 1;
-
-    // Posição ajustada da bolha de sabão
-    const bullet = {
-      id: Math.random().toString(),
-      playerId: socket.id,
-      x: direction === 1 ? player.x + player.width : player.x - 12,
-      y: player.y - 6, // Altura da arminha de bolhas
-      w: 10,
-      h: 10,
-      vx: direction * 7, // Velocidade horizontal da bolha
-      life: 50 // Duração de 50 frames antes de estourar
-    };
-
-    bullets.push(bullet);
-
-    io.emit('playerShot', socket.id);
-  });
-
-  const player = players[socket.id];
-  enemies.length = 0;
-  enemies.push(...cloneEnemies(getEnemiesLevel()));
-
-  // adiciona item uma vez por cada usuario
-  const initialVisibleItems = items.filter(item => {
-    return !player || !player.collectedItems || !player.collectedItems.includes(item.id);
-  });
-
+  // Envia os dados filtrados apenas para a fase em que o jogador está entrando
   socket.emit('init', {
     id: socket.id,
     platforms: levels[targetLevel]?.platforms || getPlatforms(),
     level: targetLevel,
     worldWidth: levels[targetLevel]?.worldWidth || getWorldWidth(),
     backgroundItems: levels[targetLevel]?.backgroundItems || getBackgroundItems(),
-    enemies: cloneEnemies(levels[targetLevel]?.enemies || getEnemiesLevel()),
-    backgroundLevel: levels[targetLevel]?.backgroundLevel || getBackgroundLevel(),
+    enemies: enemies.filter((e) => e.level === targetLevel),
+    backgroundLevel: levels[targetLevel]?.backgroundLevel || null,
     floorBackground: levels[targetLevel]?.floorBackground || getFloorBackground(),
-    items: initialVisibleItems,
+    items: items.filter((i) => i.level === targetLevel),
     debug: DEBUG,
-    showRows: SHOW_ROWS
+    showRows: SHOW_ROWS,
+  });
+
+  socket.on('shot', () => {
+    const player = players[socket.id];
+    if (!player || !player.hasGun) return;
+
+    player.lastShotTime = Date.now();
+    const direction = player.facing === 'left' ? -1 : 1;
+
+    const bullet = {
+      id: Math.random().toString(),
+      playerId: socket.id,
+      currentLevel: player.currentLevel,
+      x: direction === 1 ? player.x + player.width : player.x - 12,
+      y: player.y - 6,
+      w: 10,
+      h: 10,
+      vx: direction * 7,
+      life: 50,
+    };
+
+    bullets.push(bullet);
+    io.emit('playerShot', socket.id);
   });
 
   socket.on('playerInput', (inputs) => {
@@ -199,9 +208,8 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log(`Jogador desconectado: ${socket.id}`);
-    
+
     if (DEBUG && players[socket.id]) {
-      // Salva a posição final usando o ID fixo ('player1')
       savePlayerPosition(players[socket.id].id, players[socket.id].x, players[socket.id].y, players[socket.id].currentLevel);
     }
 
@@ -209,9 +217,8 @@ io.on('connection', (socket) => {
   });
 });
 
-enemies.push(...cloneEnemies(getEnemiesLevel()));
-
 setInterval(() => {
+  // 1. Atualizar Inimigos
   for (let enemy of enemies) {
     enemy.x += enemy.direction * enemy.speed;
 
@@ -232,40 +239,35 @@ setInterval(() => {
     b.x += b.vx;
     b.life--;
 
-    // Caso 1: Remove a bolha se o tempo expirou
     if (b.life <= 0) {
       bullets.splice(i, 1);
       continue;
     }
 
-    // Caso 2: Colisão do tiro com os inimigos
     let hitEnemy = false;
     for (let j = enemies.length - 1; j >= 0; j--) {
       const enemy = enemies[j];
 
       if (checkCollision(b, enemy)) {
-        // Incrementa a pontuação do jogador que atirou
         if (players[b.playerId]) {
           players[b.playerId].score = (players[b.playerId].score || 0) + 10;
         }
 
-        // Remove o inimigo atingido
         enemies.splice(j, 1);
         hitEnemy = true;
-        break; // Sai do loop de inimigos
+        break;
       }
     }
 
-    // Se acertou um inimigo, remove a bolha
     if (hitEnemy) {
       bullets.splice(i, 1);
     }
   }
-  
+
+  // 3. Movimentação dos Jogadores e Colisão com Inimigos
   for (let id in players) {
     const p = players[id];
     const playerPlatforms = levels[p.currentLevel]?.platforms || getPlatforms();
-
 
     if (p.inputs.left) {
       p.vx = -MOVE_SPEED;
@@ -277,19 +279,15 @@ setInterval(() => {
       p.vx *= FRICTION;
     }
 
-
     if (p.inputs.up && p.grounded) {
       p.vy = JUMP_FORCE;
       p.grounded = false;
     }
 
-
     p.vy += GRAVITY;
 
-
     p.x += p.vx;
-    handleCollision(p, true, playerPlatforms); 
-
+    handleCollision(p, true, playerPlatforms);
 
     p.y += p.vy;
     p.grounded = false;
@@ -300,8 +298,7 @@ setInterval(() => {
       p.lastSafeY = p.y;
     }
 
-
-    const currentWorldWidth = getWorldWidth();
+    const currentWorldWidth = levels[p.currentLevel]?.worldWidth || getWorldWidth();
     if (p.x < 0) p.x = 0;
     if (p.x + p.width > currentWorldWidth) p.x = currentWorldWidth - p.width;
 
@@ -309,75 +306,73 @@ setInterval(() => {
       resetPlayerToSpawn(p);
     }
 
-    if(!DEBUG)
-    for (let enemy of enemies) {
-      if (rectsIntersect(p, enemy)) {
-        resetPlayerToSpawn(p);
-        break;
-      }
-    }
-
-  //Colisão com Itens (com suporte a múltiplos tipos)
-    for (let i = items.length - 1; i >= 0; i--) {
-      const item = items[i];
-
-      // 1. Se este jogador já pegou ESTE item específico, ignora a colisão
-      if (p.collectedItems && p.collectedItems.includes(item.id)) {
-        continue;
-      }
-
-      if (checkCollision(p, item)) {
-
-        // se for uma porta
-        if(item.type === 'door') {
-          setLevel(id, p.currentLevel + 1);
+    // Colisão do jogador com inimigos da mesma fase
+    if (!DEBUG) {
+      for (let enemy of enemies) {
+        if (enemy.level === p.currentLevel && rectsIntersect(p, enemy)) {
+          resetPlayerToSpawn(p);
           break;
-        }
-        
-
-        if (!p.collectedItems) p.collectedItems = [];
-
-        if (!p.collectedItems.includes(item.id)) {
-          p.collectedItems.push(item.id);
-        }
-        
-        // Checa qual o tipo do item
-        switch (item.type) {
-          case 'coin':
-            p.score = (p.score || 0) + (item.value || 1); // Soma os pontos (padrão 1)
-            break;
-
-          case 'speed_boost':
-            // Exemplo futuro: aumenta velocidade temporariamente
-            p.speed = 8; 
-            break;
-
-          case 'gun':
-            if(!p.hasGun) {
-              p.hasGun = true;
-              p.equippedGunId = item.id;
-            }
-            break;
-
-          default:
-            break;
         }
       }
     }
   }
 
-  for (let [socketId, socket] of io.sockets.sockets) {
+  // 4. Colisão com Itens (fora do loop de players)
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i];
+
+    for (let id in players) {
+      const p = players[id];
+
+      // Ignora se o jogador já coletou este item antes
+      if (p.collectedItems.includes(item.id)) continue;
+
+      if (p.currentLevel === item.level && checkCollision(p, item)) {
+        if (item.type === 'door') {
+          setLevel(id, p.currentLevel + 1);
+          break;
+        }
+
+        switch (item.type) {
+          case 'coin':
+            p.score = (p.score || 0) + (item.value || 1);
+            break;
+
+          case 'speed_boost':
+            p.speed = 8;
+            break;
+
+          case 'gun':
+            p.hasGun = true;
+            p.equippedGunId = item.id;
+            break;
+
+          default:
+            break;
+        }
+
+        // Registra que ESTE jogador coletou o item (sem remover do servidor)
+        p.collectedItems.push(item.id);
+        break;
+      }
+    }
+  }
+
+  // 5. Enviar estado atualizado para cada jogador
+  for (let socketId in players) {
     const p = players[socketId];
+    const pLevel = p.currentLevel || 1;
 
-    const visibleItems = items.filter((item) => {
-      return !p || !p.collectedItems || !p.collectedItems.includes(item.id);
-    });
+    // Filtra itens da fase atual que o jogador AINDA NÃO coletou
+    const visibleItems = items.filter(
+      (i) => i.level === pLevel && !p.collectedItems.includes(i.id)
+    );
 
-    socket.emit('state', {
-      players,
-      enemies,
-      bullets,
-      items: visibleItems
+    io.to(socketId).emit('state', {
+      players: players,
+      enemies: enemies.filter((e) => e.level === pLevel),
+      items: visibleItems,
+      bullets: bullets.filter((b) => b.currentLevel === pLevel),
     });
   }
 }, 1000 / 60);
@@ -395,10 +390,6 @@ function setLevel(socketId, newLevel) {
 
   if (p && levels && levels[newLevel]) {
     p.currentLevel = newLevel;
-    p.collectedItems = [];
-
-    // Recarrega os inimigos e itens do servidor para a nova fase
-    reloadLevelData(newLevel);
 
     const levelData = levels[newLevel];
     p.x = levelData.spawnX || PLAYER_SPAWN.x;
@@ -410,7 +401,7 @@ function setLevel(socketId, newLevel) {
 
     io.to(socketId).emit('levelChanged', {
       levelNumber: newLevel,
-      levelData
+      levelData,
     });
 
     console.log(`Jogador ${socketId} (ID: ${p.id}) mudou para o Level ${newLevel}`);
@@ -427,22 +418,23 @@ if (DEBUG) {
     for (let id in players) {
       const p = players[id];
       const lastSave = saves[p.id];
-      
+
       // Checa se mudou X, Y ou Nível
-      if (!lastSave || 
-          Math.round(lastSave.x) !== Math.round(p.x) || 
-          Math.round(lastSave.y) !== Math.round(p.y) ||
-          lastSave.currentLevel !== p.currentLevel) {
-            
-        saves[p.id] = { 
-          x: p.x, 
-          y: p.y, 
-          currentLevel: p.currentLevel || 1 // ✅ Preserva a propriedade do Nível
+      if (
+        !lastSave ||
+        Math.round(lastSave.x) !== Math.round(p.x) ||
+        Math.round(lastSave.y) !== Math.round(p.y) ||
+        lastSave.currentLevel !== p.currentLevel
+      ) {
+        saves[p.id] = {
+          x: p.x,
+          y: p.y,
+          currentLevel: p.currentLevel || 1, // ✅ Preserva a propriedade do Nível
         };
         changed = true;
       }
     }
-    
+
     if (changed) {
       try {
         const dir = path.dirname(SAVE_FILE);
@@ -479,21 +471,11 @@ function resetPlayerToSpawn(player) {
 }
 
 function rectsIntersect(a, b) {
-  return (
-    a.x < b.x + b.width &&
-    a.x + a.width > b.x &&
-    a.y < b.y + b.height &&
-    a.y + a.height > b.y
-  );
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
 function rectsIntersect(a, b) {
-  return (
-    a.x < b.x + b.width &&
-    a.x + a.width > b.x &&
-    a.y < b.y + b.height &&
-    a.y + a.height > b.y
-  );
+  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
 function handleCollision(player, isHorizontal, platforms) {
@@ -522,12 +504,7 @@ function checkCollision(rect1, rect2) {
   const r2W = rect2.w || rect2.width || 30;
   const r2H = rect2.h || rect2.height || 30;
 
-  return (
-    rect1.x < rect2.x + r2W &&
-    rect1.x + r1W > rect2.x &&
-    rect1.y < rect2.y + r2H &&
-    rect1.y + r1H > rect2.y
-  );
+  return rect1.x < rect2.x + r2W && rect1.x + r1W > rect2.x && rect1.y < rect2.y + r2H && rect1.y + r1H > rect2.y;
 }
 
 const PORT = process.env.PORT || 3901;

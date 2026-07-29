@@ -642,6 +642,11 @@
     // Desenhar Jogadores
     for (let id in players) {
       const p = players[id];
+
+      if (p.currentLevel !== currentLevel) {
+        continue;
+      }
+
       drawPlayerSprite(p);
 
       // user border
@@ -655,6 +660,9 @@
     // Desenhar Projéteis (Bolhas de sabão)
     if (Array.isArray(bullets)) {
       bullets.forEach((b) => {
+        // Se a bala tiver informação de nível e for diferente do nível atual, ignora
+        if (b.currentLevel && b.currentLevel !== currentLevel) return;
+
         ctx.save();
         ctx.fillStyle = 'rgba(173, 216, 230, 0.7)'; // Azul bebê translúcido
         ctx.strokeStyle = '#add8e6';
