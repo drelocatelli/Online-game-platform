@@ -256,10 +256,6 @@ setInterval(() => {
       const enemy = enemies[j];
 
       if (checkCollision(b, enemy)) {
-        if (players[b.playerId]) {
-          // players[b.playerId].score = (players[b.playerId].score || 0) + 10;
-        }
-
         enemies.splice(j, 1);
         hitEnemy = true;
         break;
@@ -310,7 +306,7 @@ setInterval(() => {
     if (p.x + p.width > currentWorldWidth) p.x = currentWorldWidth - p.width;
 
     if (p.y > CANVAS_HEIGHT) {
-      resetPlayerToSpawn(p);
+      resetPlayerToSpawn(p, true);
     }
 
     // Colisão do jogador com inimigos da mesma fase
@@ -465,7 +461,19 @@ if (DEBUG) {
   }, 1000);
 }
 
-function resetPlayerToSpawn(player) {
+function respawnLevelItems(levelNum) {
+  // Remove do servidor apenas os itens do nível atual
+  items = items.filter(i => i.level !== levelNum);
+
+  // Recarrega os itens originais daquele nível a partir do arquivo levels.js
+  if (levels[levelNum] && levels[levelNum].items) {
+    levels[levelNum].items.forEach((i) => {
+      items.push({ ...i, level: Number(levelNum) });
+    });
+  }
+}
+
+function resetPlayerToSpawn(player, resetItems = false) {
   if (!player) return;
 
   if (DEBUG && player.lastSafeX !== undefined && player.lastSafeY !== undefined) {
@@ -478,6 +486,11 @@ function resetPlayerToSpawn(player) {
     player.y = PLAYER_SPAWN.y;
   }
 
+  if(resetItems) {
+    respawnLevelItems(player.currentLevel);
+    player.score = 0;
+  }
+  
   player.vx = 0;
   player.vy = 0;
   player.grounded = false;
