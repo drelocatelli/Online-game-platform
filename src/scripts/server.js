@@ -395,6 +395,10 @@ function setLevel(socketId, newLevel) {
     p.x = levelData.spawnX || PLAYER_SPAWN.x;
     p.y = levelData.spawnY || PLAYER_SPAWN.y;
 
+    p.hasGun = false;
+    p.equippedGunId = null;
+    p.speed = MOVE_SPEED;
+
     if (DEBUG) {
       savePlayerPosition(p.id, p.x, p.y, p.currentLevel);
     }
