@@ -33,7 +33,7 @@ const FRICTION = 0.8;
 const MOVE_SPEED = 5;
 const JUMP_FORCE = -16;
 const ENEMY_SPEED = 1.6;
-const PLAYER_SPAWN = { x: 1800, y: 172 };
+const PLAYER_SPAWN = { x: 50, y: 50 };
 
 const players = {};
 const enemies = [];
