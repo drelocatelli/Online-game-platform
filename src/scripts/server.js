@@ -15,7 +15,7 @@ const {
   getItemsLevel,
 } = require('./levels.js');
 
-const DEBUG = true;
+const DEBUG = false;
 const SHOW_ROWS = false;
 
 const SAVE_FILE = path.join(__dirname, 'saves', 'player_saves.json');
@@ -33,11 +33,11 @@ const FRICTION = 0.8;
 const MOVE_SPEED = 5;
 const JUMP_FORCE = -16;
 const ENEMY_SPEED = 1.6;
-const PLAYER_SPAWN = { x: 50, y: 50 };
+const PLAYER_SPAWN = { x: 1800, y: 172 };
 
 const players = {};
 const enemies = [];
-const items = [];
+let items = cloneItems(getItemsLevel());
 const bullets = [];
 let initialGuns = [];
 
@@ -131,6 +131,7 @@ io.on('connection', (socket) => {
     facing: 'right',
     score: 0,
     hasGun: false, // Começa sem arma
+    collectedItems: [],
     outfitHue: pickUniqueOutfitHue(),
     inputs: { left: false, right: false, up: false }
   };
@@ -162,12 +163,14 @@ io.on('connection', (socket) => {
     io.emit('playerShot', socket.id);
   });
 
+  const player = players[socket.id];
   enemies.length = 0;
   enemies.push(...cloneEnemies(getEnemiesLevel()));
 
-  if (items.length === 0) {
-    items.push(...cloneItems(getItemsLevel()));
-  }
+  // adiciona item uma vez por cada usuario
+  const initialVisibleItems = items.filter(item => {
+    return !player || !player.collectedItems || !player.collectedItems.includes(item.id);
+  });
 
   socket.emit('init', {
     id: socket.id,
@@ -178,7 +181,7 @@ io.on('connection', (socket) => {
     enemies: cloneEnemies(getEnemiesLevel()),
     backgroundLevel: getBackgroundLevel(),
     floorBackground: getFloorBackground(),
-    items: cloneItems(getItemsLevel()),
+    items: initialVisibleItems,
     debug: DEBUG,
     showRows: SHOW_ROWS
   });
@@ -333,7 +336,19 @@ setInterval(() => {
     for (let i = items.length - 1; i >= 0; i--) {
       const item = items[i];
 
+      // 1. Se este jogador já pegou ESTE item específico, ignora a colisão
+      if (p.collectedItems && p.collectedItems.includes(item.id)) {
+        continue;
+      }
+
       if (checkCollision(p, item)) {
+
+        if (!p.collectedItems) p.collectedItems = [];
+
+        if (!p.collectedItems.includes(item.id)) {
+          p.collectedItems.push(item.id);
+        }
+        
         // Checa qual o tipo do item
         switch (item.type) {
           case 'coin':
@@ -346,21 +361,33 @@ setInterval(() => {
             break;
 
           case 'gun':
-            p.hasGun = true; // Exemplo: ativa a arma para o jogador
-            p.equippedGunId = item.id;
+            if(!p.hasGun) {
+              p.hasGun = true;
+              p.equippedGunId = item.id;
+            }
             break;
 
           default:
             break;
         }
-
-        // Remove o item coletado do mapa
-        items.splice(i, 1);
       }
     }
   }
 
-  io.emit('state', { players, enemies, items, bullets });
+  for (let [socketId, socket] of io.sockets.sockets) {
+    const p = players[socketId];
+
+    const visibleItems = items.filter((item) => {
+      return !p || !p.collectedItems || !p.collectedItems.includes(item.id);
+    });
+
+    socket.emit('state', {
+      players,
+      enemies,
+      bullets,
+      items: visibleItems
+    });
+  }
 }, 1000 / 60);
 
 if (DEBUG) {
@@ -408,7 +435,7 @@ function resetPlayerToSpawn(player) {
   player.grounded = false;
   player.inputs = { left: false, right: false, up: false };
   player.hasGun = false
-  resetItems()
+  player.collectedItems = [];
 }
 
 function resetItems() {
@@ -461,7 +488,7 @@ function checkCollision(rect1, rect2) {
   );
 }
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3901;
 server.listen(PORT, () => {
   console.log(`Servidor rodando em http://localhost:${PORT}`);
 });

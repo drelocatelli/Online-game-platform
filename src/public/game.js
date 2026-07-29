@@ -5,15 +5,7 @@
   // ==========================================
   // CONFIGURAÇÕES DE ESCALA VISUAL
   // ==========================================
-  const PLAYER_RENDER_SCALE = 2.9; // Aumentou o Player (Era 1.5)
-  const ITEM_RENDER_SCALE = 5.4; // <--- NOVO: Aumenta as árvores/itens
-  const FLOOR_TILE_SCALE = 1.5; // <--- NOVO: Aumenta a textura do chão/plataforma
-
-  let isWalkGifLoaded = false;
-  let isEnemyGifLoaded = false;
-
-  let lastShotTime = 0; // Armazena o carimbo de data/hora do último disparo
-  const SHOT_ANIMATION_DURATION = 250; // Duração do sprite com a arma (em milissegundos)
+  const CACHE_BUST = Date.now();
 
   const spriteImages = {
     idle: new Image(),
@@ -33,7 +25,19 @@
   spriteImages.enemy.src = '/sprites/enemy.gif';
   spriteImages.tree.src = '/sprites/scenary/tree.png';
   spriteImages.floor.src = '/sprites/scenary/floor.png';
-  spriteImages.player_with_gun.src = '/sprites/player_with_gun.png';
+  spriteImages.player_with_gun.src = '/sprites/player_with_gun.png?v=' + CACHE_BUST;
+
+  const PLAYER_RENDER_SCALE = 2.9; // Aumentou o Player (Era 1.5)
+  const ITEM_RENDER_SCALE = 5.4; // <--- NOVO: Aumenta as árvores/itens
+  const FLOOR_TILE_SCALE = 1.5; // <--- NOVO: Aumenta a textura do chão/plataforma
+
+  let isWalkGifLoaded = false;
+  let isEnemyGifLoaded = false;
+
+  let lastShotTime = 0; // Armazena o carimbo de data/hora do último disparo
+  const SHOT_ANIMATION_DURATION = 250; // Duração do sprite com a arma (em milissegundos)
+
+  
 
   let myId = null;
   
@@ -235,7 +239,18 @@
   });
 
   socket.on('state', (serverState) => {
-    players = serverState.players || serverState;
+    items = serverState.items || [];
+    const newPlayers = serverState.players || serverState;
+
+    
+    // Preserva o tempo do último tiro gravado no client para não resetar a animação
+    for (let id in newPlayers) {
+      if (players[id] && players[id].lastShotTime) {
+        newPlayers[id].lastShotTime = players[id].lastShotTime;
+      }
+    }
+    
+    players = newPlayers;
 
     // Atualiza a pontuação do jogador local no HTML
     if (myId && players[myId]) {
@@ -253,8 +268,9 @@
     }
 
     enemies = serverState.enemies || [];
-    items = serverState.items || [];
     bullets = serverState.bullets || [];
+    
+
     render();
   });
 
@@ -314,10 +330,6 @@
         ctx.drawImage(sprite.image, x, y, w, h);
         drawn = true;
       }
-    }
-
-    if(item.gun) {
-      makeGun(ctx, item)
     }
 
     // Se a imagem/GIF ainda não carregou, desenha um círculo amarelo para garantir visibilidade
