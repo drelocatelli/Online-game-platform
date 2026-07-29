@@ -214,6 +214,13 @@ io.on('connection', (socket) => {
     }
 
     delete players[socket.id];
+
+    // --- REINICIA O MUNDO QUANDO O ÚLTIMO JOGADOR SAIR ---
+    if (Object.keys(players).length === 0) {
+      loadAllLevelsData(); // Recarrega inimigos e itens originais de todos os níveis
+      bullets.length = 0;   // Limpa projéteis soltos no mapa
+      console.log('[SERVIDOR] Servidor zerado! Aguardando novos jogadores...');
+    }
   });
 });
 
@@ -376,6 +383,11 @@ setInterval(() => {
     });
   }
 }, 1000 / 60);
+
+function resetAllItems() {
+  items = cloneItems(getItemsLevel());
+  console.log('[SERVIDOR] Todos os jogadores saíram. Itens e progresso de mapa resetados!');
+}
 
 function reloadLevelData(levelNum) {
   if (levels && levels[levelNum]) {
