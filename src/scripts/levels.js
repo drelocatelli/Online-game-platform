@@ -2,10 +2,10 @@ const lvl1 = require('../levels/lvl1')
 const lvl2 = require('../levels/lvl2')
 
 
-const levels = {
-  1: lvl1,
-  2: lvl2,
-};
+const levels = [
+  lvl1,
+  lvl2,
+]
 
 let currentLevel = 1;
 
@@ -23,14 +23,6 @@ function getBackgroundItems() {
 
 function getFloorBackground() {
   return (levels[currentLevel] || levels[1]).floorBackground || '/sprites/scenary/floor.png';
-}
-
-function setLevel(levelNumber) {
-  if (levels[levelNumber]) {
-    currentLevel = levelNumber;
-    return true;
-  }
-  return false;
 }
 
 function getItemsLevel() {
@@ -52,7 +44,6 @@ module.exports = {
   getBackgroundItems,
   getFloorBackground,
   getEnemiesLevel,
-  setLevel,
   getCurrentLevel: () => currentLevel,
   getBackgroundLevel,
   getItemsLevel,

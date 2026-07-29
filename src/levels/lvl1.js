@@ -2,7 +2,7 @@ const initialY = 82;
 const gap = 50;
 
 module.exports = {
-    worldWidth: 2400,
+    worldWidth: 3000,
     backgroundLevel: '/sprites/backgrounds/background1.png',
     floorBackground: '/sprites/scenary/floor.png',
     backgroundItems: [
@@ -14,6 +14,11 @@ module.exports = {
       { type: 'bush', x: 1302, y: 452, w: 100, h: 90, background: '/sprites/scenary/bush.gif' },
 
       { type: 'cascate', x: 1660, y: 540, w: 370, h: 80, background: '/sprites/scenary/cascate-sprite.png', frames: 12, frameSpeed: 3 },
+
+      { type: 'coconut_tree', x: 2398, y: 360, w: 110, h: 200, background: '/sprites/scenary/coconut_tree.gif' },
+      { type: 'bush', x: 2193, y: 455, w: 100, h: 90, background: '/sprites/scenary/bush.gif' },
+
+
 
     ],
     enemies: [
@@ -54,6 +59,9 @@ module.exports = {
       { id: 'coin-5', type: 'coin', x: 2009, y: initialY + (gap * 3), w: 40, h: 40, background: '/sprites/items/coins.gif' },
       { id: 'coin-6', type: 'coin', x: 2009, y: initialY + (gap * 4), w: 40, h: 40, background: '/sprites/items/coins.gif' },
       { id: 'coin-7', type: 'coin', x: 2009, y: initialY + (gap * 5), w: 40, h: 40, background: '/sprites/items/coins.gif' },
+
+      { id: 'door-1', type: 'door', x: 2610, y: 393, w: 150, h: 150, background: '/sprites/door.png' },
+
       // { id: 'speed_boost-1', type: 'speed_boost', x: 610, y: 489, w: 60, h: 40, background: '/sprites/coins.png' },
     ],
     platforms: [

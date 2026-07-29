@@ -1,15 +1,31 @@
+const initialY = 82;
+const gap = 50;
+
 module.exports = {
-     worldWidth: 2000,
-    backgroundLevel: '#f4a261',
+    worldWidth: 3000,
+    backgroundLevel: '/sprites/backgrounds/background1.png',
     floorBackground: '/sprites/scenary/floor.png',
     backgroundItems: [
-      { type: 'tree', x: 180, y: 360, w: 110, h: 140, background: '/sprites/scenary/tree.png' },
-      { type: 'tree', x: 980, y: 240, w: 110, h: 150, background: '/sprites/scenary/tree.png' },
+
     ],
-    enemies: [],
+    enemies: [
+    
+    ],
+    items: [
+    
+    ],
     platforms: [
-      { x: 50, y: 520, w: 1800, h: 20, color: '#00adb5' },
-      { x: 500, y: 380, w: 200, h: 20, color: '#00adb5' },
-      { x: 1100, y: 280, w: 200, h: 20, color: '#00adb5' },
+      { x: -10, y: 536, w: 1020, h: 70, background: '/sprites/scenary/floor.png', debug: false },
+      { x: 597, y: 313, w: 170, h: 70, background: '/sprites/scenary/floor2.png', debug: false },
+      { x: 900, y: 467, w: 80, h: 70, background: '/sprites/scenary/floor2.png', debug: false },
+      { x: 1222, y: 536, w: 500, h: 70, background: '/sprites/scenary/floor.png', debug: false },
+
+      { x: 1449, y: 360, w: 80, h: 70, background: '/sprites/scenary/floor2.png', debug: false },
+      { x: 1529, y: 360, w: 80, h: 70, background: '/sprites/scenary/floor2.png', debug: false },
+      { x: 1666, y: 218, w: 300, h: 70, background: '/sprites/scenary/floor2.png', debug: false },
+
+      { x: 1970, y: 540, w: 800, h: 70, background: '/sprites/scenary/floor.png', debug: false },
+
+      
     ],
 }

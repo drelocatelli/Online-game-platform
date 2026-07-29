@@ -8,11 +8,11 @@ const {
   getWorldWidth,
   getBackgroundItems,
   getCurrentLevel,
-  setLevel,
   getBackgroundLevel,
   getFloorBackground,
   getEnemiesLevel,
   getItemsLevel,
+  levels,
 } = require('./levels.js');
 
 const DEBUG = false;
@@ -127,6 +127,7 @@ io.on('connection', (socket) => {
     vx: 0,
     vy: 0,
     color: color,
+    currentLevel: 1,
     grounded: false,
     facing: 'right',
     score: 0,
@@ -189,25 +190,6 @@ io.on('connection', (socket) => {
   socket.on('playerInput', (inputs) => {
     if (players[socket.id]) {
       players[socket.id].inputs = inputs;
-    }
-  });
-
-
-  socket.on('changeLevel', (newLevel) => {
-    if (setLevel(newLevel)) {
-      enemies.length = 0;
-      enemies.push(...cloneEnemies(getEnemiesLevel()));
-      bullets.length = 0; // Limpa projéteis ao mudar de fase
-
-      io.emit('levelChanged', {
-        level: getCurrentLevel(),
-        platforms: getPlatforms(),
-        worldWidth: getWorldWidth(),
-        backgroundItems: getBackgroundItems(),
-        enemies: cloneEnemies(getEnemiesLevel()),
-        backgroundLevel: getBackgroundLevel(),
-        floorBackground: getFloorBackground(),
-      });
     }
   });
 
@@ -367,6 +349,11 @@ setInterval(() => {
             }
             break;
 
+          case 'door':
+            const nextLevel = p.currentLevel + 1
+            setLevel(p.id, nextLevel);
+          break;
+
           default:
             break;
         }
@@ -414,6 +401,15 @@ if (DEBUG) {
       }
     }
   }, 1000);
+}
+
+function setLevel(socketId, levelNumber) {
+  const p = players[socketId]
+
+  if(p && levels[levelNumber]) {
+    p.currentLevel = levelNumber
+    p.collectedItems = []
+  }
 }
 
 function resetPlayerToSpawn(player) {
