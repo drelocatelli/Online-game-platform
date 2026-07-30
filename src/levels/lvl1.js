@@ -9,11 +9,11 @@ module.exports = {
       { type: 'coconut_tree', x: 150, y: 360, w: 110, h: 200, background: '/sprites/scenary/coconut_tree.gif' },
       { type: 'coconut_tree', x: 266, y: 360, w: 110, h: 200, background: '/sprites/scenary/coconut_tree.gif' },
       { type: 'bush', x: 400, y: 452, w: 100, h: 90, background: '/sprites/scenary/bush.gif' },
-      { type: 'cascate', x: 900, y: 535, w: 370, h: 80, background: '/sprites/scenary/cascate-sprite.png', frames: 12, frameSpeed: 3 },
+      { type: 'cascate', x: 1000, y: 535, w: 250, h: 64, background: '/sprites/scenary/cascate-sprite2.png', frames: 4, frameSpeed: 3 },
 
       { type: 'bush', x: 1302, y: 452, w: 100, h: 90, background: '/sprites/scenary/bush.gif' },
 
-      { type: 'cascate', x: 1660, y: 540, w: 370, h: 80, background: '/sprites/scenary/cascate-sprite.png', frames: 12, frameSpeed: 3 },
+      { type: 'cascate', x: 1701, y: 540, w: 310, h: 64, background: '/sprites/scenary/cascate-sprite2.png', frames: 4, frameSpeed: 3 },
 
     ],
     enemies: [
