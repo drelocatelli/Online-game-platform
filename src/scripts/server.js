@@ -8,10 +8,12 @@ const {
   getWorldWidth,
   getBackgroundItems,
   getFloorBackground,
-  getEnemiesLevel,
-  getItemsLevel,
   levels,
 } = require('./levels.js');
+const { handleItems } = require('./items.js');
+const EventEmitter = require('events')
+
+const emitter = new EventEmitter()
 
 const DEBUG = true;
 const SHOW_ROWS = false;
@@ -24,19 +26,42 @@ const io = new Server(server);
 
 app.use(express.static(path.join(__dirname, '../public')));
 
-const CANVAS_WIDTH = 800;
 const CANVAS_HEIGHT = 600;
 const GRAVITY = 0.6;
 const FRICTION = 0.8;
 const MOVE_SPEED = 5;
 const JUMP_FORCE = -16;
-const ENEMY_SPEED = 1.6;
 const PLAYER_SPAWN = { x: 50, y: 50 };
 
-const players = {};
+let players = {};
 let enemies = [];
 let items = [];
 const bullets = [];
+
+
+emitter.on('levelChanged', (data) => {
+  const { socketId, playerId, newLevel, levelData } = data;
+
+  // Garante o salvamento imediato do save no DEBUG
+  if (DEBUG) {
+    savePlayerPosition(playerId, levelData.spawnX || PLAYER_SPAWN.x, levelData.spawnY || PLAYER_SPAWN.y, newLevel);
+  }
+
+  // Notifica o cliente via WebSockets
+  io.to(socketId).emit('levelChanged', {
+    levelNumber: newLevel,
+    levelData,
+  });
+
+  console.log(`[LEVEL] Jogador ${playerId} (${socketId}) mudou para o Level ${newLevel}`);
+});
+
+emitter.on('savePlayerPosition', (data) => {
+  const { socketId, x, y, currentLevel } = data;
+  const p = players[socketId];
+  const targetId = (DEBUG && p) ? p.id : socketId;
+  savePlayerPosition(targetId, x, y, currentLevel);
+});
 
 function loadAllLevelsData() {
   let allEnemies = [];
@@ -64,16 +89,30 @@ function loadAllLevelsData() {
 
 loadAllLevelsData();
 
+
 const colors = ['#ff4d4d', '#4da6ff', '#4dff88', '#ffea4d', '#ff4dff'];
 const outfitHues = [0, 40, 80, 140, 200, 260, 320];
 
-function cloneEnemies(levelEnemies) {
-  return (levelEnemies || []).map((enemy) => ({ ...enemy }));
+function savePlayerPosition(socketId, x, y, currentLevel = 1) {
+  try {
+      const saves = loadSaves();
+      saves[socketId] = { x, y, currentLevel };
+      
+      // Garante que o diretório existe
+      const dir = path.dirname(SAVE_FILE);
+      if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        
+        // Cria/sobrecreve o arquivo com os dados salvos
+    fs.writeFileSync(SAVE_FILE, JSON.stringify(saves, null, 2), 'utf8');
+    console.log(`[DEBUG] Save atualizado para ${socketId} em X: ${Math.round(x)}, Y: ${Math.round(y)}`);
+  } catch (err) {
+    console.error('Erro ao salvar no arquivo:', err);
+  }
 }
 
-function cloneItems(levelItems) {
-  return (levelItems || []).map((item) => ({ ...item }));
-}
+
 
 function loadSaves() {
   try {
@@ -87,25 +126,6 @@ function loadSaves() {
   } catch (err) {
     console.error('Erro ao ler/criar arquivo de save:', err);
     return {};
-  }
-}
-
-function savePlayerPosition(socketId, x, y, currentLevel = 1) {
-  try {
-    const saves = loadSaves();
-    saves[socketId] = { x, y, currentLevel };
-
-    // Garante que o diretório existe
-    const dir = path.dirname(SAVE_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-
-    // Cria/sobrecreve o arquivo com os dados salvos
-    fs.writeFileSync(SAVE_FILE, JSON.stringify(saves, null, 2), 'utf8');
-    console.log(`[DEBUG] Save atualizado para ${socketId} em X: ${Math.round(x)}, Y: ${Math.round(y)}`);
-  } catch (err) {
-    console.error('Erro ao salvar no arquivo:', err);
   }
 }
 
@@ -142,6 +162,7 @@ io.on('connection', (socket) => {
   const targetLevel = savedData.currentLevel || 1;
 
   players[socket.id] = {
+    socketId: socket.id,
     id: playerId,
     x: savedData.x,
     y: savedData.y,
@@ -210,7 +231,13 @@ io.on('connection', (socket) => {
     console.log(`Jogador desconectado: ${socket.id}`);
 
     if (DEBUG && players[socket.id]) {
-      savePlayerPosition(players[socket.id].id, players[socket.id].x, players[socket.id].y, players[socket.id].currentLevel);
+      const {id, x, y, currentLevel} = players[socket.id]
+      emitter.emit('savePlayerPosition', {
+          socketId: id,
+          x,
+          y,
+          currentLevel,
+      })
     }
 
     delete players[socket.id];
@@ -320,42 +347,23 @@ setInterval(() => {
     }
   }
 
-  // 4. Colisão com Itens (fora do loop de players)
+  // 4. Colisão com Itens
   for (let i = items.length - 1; i >= 0; i--) {
     const item = items[i];
 
     for (let id in players) {
-      const p = players[id];
+      let p = players[id];
 
-      // Ignora se o jogador já coletou este item antes
-      if (p.collectedItems.includes(item.id)) continue;
+      if (p.collectedItems && p.collectedItems.includes(item.id)) continue;
 
-      if (p.currentLevel === item.level && checkCollision(p, item)) {
-        if (item.type === 'door') {
-          setLevel(id, p.currentLevel + 1);
-          break;
-        }
+      const playerLevel = Number(p.currentLevel || 1);
+      const itemLevel = Number(item.level);
 
-        switch (item.type) {
-          case 'coin':
-            p.score = (p.score || 0) + (item.value || 1);
-            break;
+      if (playerLevel === itemLevel && checkCollision(p, item)) {
+        console.log(`[DEBUG] Jogador ${p.id} colidiu com item:`, item.type);
 
-          case 'speed_boost':
-            p.speed = 8;
-            break;
+        p = handleItems(p, item, PLAYER_SPAWN, MOVE_SPEED, emitter);
 
-          case 'gun':
-            p.hasGun = true;
-            p.equippedGunId = item.id;
-            break;
-
-          default:
-            break;
-        }
-
-        // Registra que ESTE jogador coletou o item (sem remover do servidor)
-        p.collectedItems.push(item.id);
         break;
       }
     }
@@ -379,49 +387,6 @@ setInterval(() => {
     });
   }
 }, 1000 / 60);
-
-function resetAllItems() {
-  items = cloneItems(getItemsLevel());
-  console.log('[SERVIDOR] Todos os jogadores saíram. Itens e progresso de mapa resetados!');
-}
-
-function reloadLevelData(levelNum) {
-  if (levels && levels[levelNum]) {
-    enemies.length = 0;
-    enemies.push(...cloneEnemies(levels[levelNum].enemies || []));
-    items = cloneItems(levels[levelNum].items || []);
-  }
-}
-
-function setLevel(socketId, newLevel) {
-  const p = players[socketId];
-
-  if (p && levels && levels[newLevel]) {
-    p.currentLevel = newLevel;
-
-    const levelData = levels[newLevel];
-    p.x = levelData.spawnX || PLAYER_SPAWN.x;
-    p.y = levelData.spawnY || PLAYER_SPAWN.y;
-
-    p.hasGun = false;
-    p.equippedGunId = null;
-    p.speed = MOVE_SPEED;
-
-    if (DEBUG) {
-      savePlayerPosition(p.id, p.x, p.y, p.currentLevel);
-    }
-
-    io.to(socketId).emit('levelChanged', {
-      levelNumber: newLevel,
-      levelData,
-    });
-
-    console.log(`Jogador ${socketId} (ID: ${p.id}) mudou para o Level ${newLevel}`);
-    return true;
-  }
-
-  return false;
-}
 
 if (DEBUG) {
   setInterval(() => {
@@ -476,17 +441,24 @@ function respawnLevelItems(levelNum) {
 function resetPlayerToSpawn(player, resetItems = false) {
   if (!player) return;
 
+  // CORREÇÃO: Garante o reset de nível e posição
+  const lvlData = levels[player.currentLevel];
+  const spawnX = lvlData?.spawnX || PLAYER_SPAWN.x;
+  const spawnY = lvlData?.spawnY || PLAYER_SPAWN.y;
+
   if (DEBUG && player.lastSafeX !== undefined && player.lastSafeY !== undefined) {
     player.x = player.lastSafeX;
     player.y = player.lastSafeY;
-
-    savePlayerPosition(player.id, player.x, player.y, player.currentLevel);
   } else {
-    player.x = PLAYER_SPAWN.x;
-    player.y = PLAYER_SPAWN.y;
+    player.x = spawnX;
+    player.y = spawnY;
+    player.lastSafeX = spawnX;
+    player.lastSafeY = spawnY;
   }
 
-  if(resetItems) {
+  savePlayerPosition(player.id, player.x, player.y, player.currentLevel);
+
+  if (resetItems) {
     respawnLevelItems(player.currentLevel);
     player.score = 0;
   }

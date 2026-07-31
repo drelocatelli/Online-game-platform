@@ -282,7 +282,6 @@
 
   socket.on('levelChanged', (data) => {
     const levelData = data.levelData || {};
-
     platforms = levelData.platforms || [];
     worldWidth = levelData.worldWidth || worldWidth;
     currentLevel = data.levelNumber || currentLevel;
