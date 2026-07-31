@@ -1,9 +1,12 @@
 const {levels} = require("./levels");
 
-
 function handleItems(p, item, playerSpawn, moveSpeed, emitter) {
   if (item.type === 'door') {
     return handleDoor(p, playerSpawn, moveSpeed, emitter);
+  }
+
+  if(item.type === 'chest') {
+    return handleChest(p, item.collect, item.id);
   }
 
   // Demais itens
@@ -27,6 +30,13 @@ function handleItems(p, item, playerSpawn, moveSpeed, emitter) {
   }
 
   return p;
+}
+
+function handleChest(p, collect, e) {
+    if(collect === 'gun') {
+        p.hasGun = true;
+        p.equippedGunId = itemId;
+    }
 }
 
 function handleDoor(p, playerSpawn, moveSpeed, emitter) {
