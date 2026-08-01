@@ -5,8 +5,8 @@ function handleItems(p, item, playerSpawn, moveSpeed, emitter) {
     return handleDoor(p, playerSpawn, moveSpeed, emitter);
   }
 
-  if(item.type === 'chest') {
-    return handleChest(p, item.collect, item.id);
+  if(item.type === 'chest' || item.type === 'key') {
+    return handleChest(p, item.collect, item);
   }
 
   // Demais itens
@@ -32,11 +32,35 @@ function handleItems(p, item, playerSpawn, moveSpeed, emitter) {
   return p;
 }
 
-function handleChest(p, collect, e) {
-    if(collect === 'gun') {
-        p.hasGun = true;
-        p.equippedGunId = itemId;
+function handleChest(p, collect, item) {
+    if(item.locked) {
+      const items = levels[p.currentLevel].items;
+      const requiredKey = items.find(i => i.id === item.keyId);
+      const userHasKey = p.collectedItems.includes(requiredKey.id);
+
+      // open chest if user has the key
+      if(userHasKey) {
+        item.locked = false;
+
+        if(collect === 'gun') {
+          handleGunChest(p, item);
+        }
+
+      }
     }
+
+    // coleta a chave
+    if(item.type === 'key') {
+      p.collectedItems.push(item.id);
+    }
+
+}
+
+function handleGunChest(p, item) {
+    item.background = '/sprites/items/chest_gun.png';
+    p.hasGun = true;
+    p.equippedGunId = `gun_${item.id}`;
+    console.log(p)
 }
 
 function handleDoor(p, playerSpawn, moveSpeed, emitter) {

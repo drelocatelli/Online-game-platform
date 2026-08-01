@@ -8,7 +8,8 @@ module.exports = {
 
     ],
     items: [
-      { id: 'chest-1', type: 'chest', collect: 'gun',  x: 121, y: 469, w: 90, h: 90, background: '/sprites/items/chest_closed.png' },
+      { id: 'chest-1', type: 'chest', collect: 'gun', keyId: 'key-1', locked: true,  x: 121, y: 469, w: 90, h: 90, background: '/sprites/items/chest_closed.png' },
+      { id: 'key-1', type: 'key',  x: 400, y: 489, w: 36, h: 36, background: '/sprites/items/key.png' },
   
     ],
     platforms: [
