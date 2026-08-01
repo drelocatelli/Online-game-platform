@@ -33,34 +33,37 @@ function handleItems(p, item, playerSpawn, moveSpeed, emitter) {
 }
 
 function handleChest(p, collect, item) {
-    if(item.locked) {
-      const items = levels[p.currentLevel].items;
-      const requiredKey = items.find(i => i.id === item.keyId);
-      const userHasKey = p.collectedItems.includes(requiredKey.id);
-
-      // open chest if user has the key
-      if(userHasKey) {
-        item.locked = false;
-
-        if(collect === 'gun') {
-          handleGunChest(p, item);
-        }
-
-      }
-    }
-
-    // coleta a chave
-    if(item.type === 'key') {
+  if (item.type === 'key') {
+    if (!p.collectedItems.includes(item.id)) {
       p.collectedItems.push(item.id);
     }
+    return;
+  }
 
+  if (item.type === 'chest') {
+    const chestOpenedId = `opened_chest_${item.id}`;
+    
+    // Se o player já abriu este baú antes, não faz nada
+    if (p.collectedItems.includes(chestOpenedId)) return;
+
+    const levelItems = levels[p.currentLevel]?.items || [];
+    const requiredKey = levelItems.find(i => i.id === item.keyId);
+    const userHasKey = requiredKey && p.collectedItems.includes(requiredKey.id);
+
+    if (userHasKey) {
+      if (collect === 'gun') {
+        handleGunChest(p, item);
+      }
+      // Marca no PLAYER que ele abriu este baú (sem alterar o item global)
+      p.collectedItems.push(chestOpenedId);
+    }
+  }
 }
 
 function handleGunChest(p, item) {
     item.background = '/sprites/items/chest_gun.png';
     p.hasGun = true;
     p.equippedGunId = `gun_${item.id}`;
-    console.log(p)
 }
 
 function handleDoor(p, playerSpawn, moveSpeed, emitter) {
