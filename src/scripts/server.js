@@ -360,7 +360,6 @@ setInterval(() => {
       const itemLevel = Number(item.level);
 
       if (playerLevel === itemLevel && checkCollision(p, item)) {
-        console.log(`[DEBUG] Jogador ${p.id} colidiu com item:`, item.type);
 
         p = handleItems(p, item, PLAYER_SPAWN, MOVE_SPEED, emitter);
 
