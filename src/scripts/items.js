@@ -51,19 +51,19 @@ function handleChest(p, collect, item) {
     const userHasKey = requiredKey && p.collectedItems.includes(requiredKey.id);
 
     if (userHasKey) {
-      if (collect === 'gun') {
-        handleGunChest(p, item);
-      }
+      handleChestSurprise(p, collect, item);
       // Marca no PLAYER que ele abriu este baú (sem alterar o item global)
       p.collectedItems.push(chestOpenedId);
     }
   }
 }
 
-function handleGunChest(p, item) {
-    item.background = '/sprites/items/chest_gun.png';
-    p.hasGun = true;
-    p.equippedGunId = `gun_${item.id}`;
+function handleChestSurprise(p, collect, item) {
+    if(collect === 'gun') {
+      item.background = '/sprites/items/chest_gun.png';
+      p.hasGun = true;
+      p.equippedGunId = `gun_${item.id}`;
+    }
 }
 
 function handleDoor(p, playerSpawn, moveSpeed, emitter) {
