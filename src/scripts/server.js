@@ -15,8 +15,8 @@ const EventEmitter = require('events')
 
 const emitter = new EventEmitter()
 
-let DEBUG = false;
-let CACHED = false;
+let DEBUG = true;
+let CACHED = true;
 const SHOW_ROWS = false;
 
 const SAVE_FILE = path.join(__dirname, 'saves', 'player_saves.json');
