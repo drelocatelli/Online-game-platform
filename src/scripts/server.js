@@ -15,7 +15,8 @@ const EventEmitter = require('events')
 
 const emitter = new EventEmitter()
 
-const DEBUG = true;
+let DEBUG = false;
+let CACHED = false;
 const SHOW_ROWS = false;
 
 const SAVE_FILE = path.join(__dirname, 'saves', 'player_saves.json');
@@ -141,6 +142,10 @@ function pickUniqueOutfitHue() {
 }
 
 app.get('/', (req, res) => {
+  const {debug, cached} = req.query
+  DEBUG = debug === '1' ? true : false
+  CACHED = cached === '1' ? true : false
+  console.log({DEBUG, CACHED});
   res.sendFile(path.resolve(__dirname, '../index.html'));
 });
 
@@ -153,7 +158,8 @@ io.on('connection', (socket) => {
   const playerId = DEBUG ? 'player1' : socket.id;
 
   let savedData = { x: PLAYER_SPAWN.x, y: PLAYER_SPAWN.y, currentLevel: 1 };
-  if (DEBUG) {
+  console.log('conn', {DEBUG, CACHED});
+  if (DEBUG && CACHED) {
     const saves = loadSaves();
     savedData = saves[playerId] || savedData;
   }
@@ -387,7 +393,7 @@ setInterval(() => {
   }
 }, 1000 / 60);
 
-if (DEBUG) {
+if (DEBUG && CACHED) {
   setInterval(() => {
     let changed = false;
     const saves = loadSaves();
