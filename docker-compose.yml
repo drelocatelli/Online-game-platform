@@ -1,0 +1,13 @@
+services:
+  dessinha-world:
+    build: .
+    container_name: online-dessinha-world
+    working_dir: /app
+    command: node --watch ./src/scripts/server.js
+    ports:
+      - "3901:3901"
+    volumes:
+      - ./src:/app/src
+    environment:
+      - NODE_ENV=development
+    restart: always
